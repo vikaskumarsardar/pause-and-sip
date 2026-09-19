@@ -38,6 +38,7 @@ import {
   Check,
   Music,
   Upload,
+  Crown,
 } from 'lucide-react-native';
 
 import {
@@ -72,6 +73,8 @@ const CONTAINER_SIZE = Math.min(
 
 interface BreathingVisualizerProps {
   onCycleComplete?: () => void;
+  isPro?: boolean;
+  onOpenPaywall?: () => void;
 }
 
 const PHASE_COLORS: Record<BreathPhase, string> = {
@@ -90,6 +93,8 @@ const PHASE_LABELS: Record<BreathPhase, string> = {
 
 export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   onCycleComplete,
+  isPro = false,
+  onOpenPaywall,
 }) => {
   const [customPatterns, setCustomPatterns] = useState<BreathPattern[]>([]);
   const [customSounds, setCustomSounds] = useState<CustomSoundItem[]>([]);
@@ -289,6 +294,11 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   };
 
   const selectPreset = async (preset: BreathPattern): Promise<void> => {
+    if (preset.isPro && !isPro) {
+      await HapticService.warning();
+      if (onOpenPaywall) onOpenPaywall();
+      return;
+    }
     await HapticService.lightTouch();
     setActivePreset(preset);
     setIsActive(false);
@@ -297,7 +307,12 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, { duration: 300 });
   };
 
-  const toggleSoundscape = async (type: SoundscapeType): Promise<void> => {
+  const toggleSoundscape = async (type: SoundscapeType, isProSoundscape?: boolean): Promise<void> => {
+    if (isProSoundscape && !isPro) {
+      await HapticService.warning();
+      if (onOpenPaywall) onOpenPaywall();
+      return;
+    }
     await HapticService.lightTouch();
     setActiveCustomSoundId(null);
     const nextType = activeSoundscape === type ? SOUNDSCAPES.OFF : type;
@@ -423,6 +438,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                   <Text style={[styles.presetChipText, isSelected && styles.presetChipTextActive]}>
                     {preset.name}
                   </Text>
+                  {preset.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 4 }} />}
                   {preset.isCustom && (
                     <TouchableOpacity
                       style={styles.deleteChipIcon}
@@ -441,6 +457,11 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           <TouchableOpacity
             style={styles.addPresetChip}
             onPress={() => {
+              if (!isPro) {
+                HapticService.warning();
+                if (onOpenPaywall) onOpenPaywall();
+                return;
+              }
               HapticService.lightTouch();
               setIsModalOpen(true);
             }}
@@ -448,6 +469,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           >
             <Plus size={14} color={COLORS.emerald} />
             <Text style={styles.addPresetText}>Custom</Text>
+            {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -564,13 +586,14 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
               <TouchableOpacity
                 key={item.id}
                 style={[styles.soundChip, isSelected && styles.soundChipActive]}
-                onPress={() => toggleSoundscape(item.id)}
+                onPress={() => toggleSoundscape(item.id, item.isPro)}
                 activeOpacity={0.8}
               >
                 <IconComp size={14} color={isSelected ? COLORS.water : COLORS.body} />
                 <Text style={[styles.soundChipText, isSelected && styles.soundChipTextActive]}>
                   {item.name}
                 </Text>
+                {item.isPro && !isPro && <Crown size={12} color={COLORS.gold} />}
               </TouchableOpacity>
             );
           })}
@@ -605,6 +628,11 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           <TouchableOpacity
             style={styles.addSoundChip}
             onPress={() => {
+              if (!isPro) {
+                HapticService.warning();
+                if (onOpenPaywall) onOpenPaywall();
+                return;
+              }
               HapticService.lightTouch();
               setIsSoundModalOpen(true);
             }}
@@ -612,6 +640,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           >
             <Plus size={14} color={COLORS.water} />
             <Text style={styles.addSoundText}>Audio FX</Text>
+            {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
           </TouchableOpacity>
         </ScrollView>
 

@@ -22,6 +22,7 @@ import {
   Sparkles,
   Bell,
   Crown,
+  BarChart2,
 } from 'lucide-react-native';
 
 import { THEME, COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
@@ -38,6 +39,8 @@ import {
   AppTab,
   HYDRATION_CONSTANTS,
   NOTIFICATION_CONSTANTS,
+  BEVERAGE_TYPES,
+  BeverageItem,
 } from '@/types';
 
 function MainScreen(): React.ReactElement {
@@ -98,19 +101,34 @@ function MainScreen(): React.ReactElement {
     setActiveTab(tab);
   };
 
+  const [selectedBeverage, setSelectedBeverage] = useState<BeverageItem>(BEVERAGE_TYPES[0]);
+
+  const handleSelectBeverage = async (bev: BeverageItem): Promise<void> => {
+    if (bev.isPro && !isPro) {
+      await HapticService.warning();
+      handleOpenPaywall();
+      return;
+    }
+    await HapticService.lightTouch();
+    setSelectedBeverage(bev);
+  };
+
   const handleAddWater = async (amountMl: number, presetLabel: string): Promise<void> => {
     await HapticService.mediumTouch();
+    const effectiveMl = Math.round(amountMl * selectedBeverage.factor);
     const newEntry: WaterLog = {
       id: Date.now().toString(),
       timestamp: Date.now(),
-      amountMl,
-      presetLabel,
+      amountMl: effectiveMl,
+      presetLabel: `${selectedBeverage.name} (${presetLabel})`,
+      beverageTypeId: selectedBeverage.id,
+      effectiveMl,
     };
     const updated = [newEntry, ...waterLogs];
     setWaterLogs(updated);
     await StorageService.saveWaterLogs(updated);
 
-    const projectedTotalMl = totalWaterTodayMl + amountMl;
+    const projectedTotalMl = totalWaterTodayMl + effectiveMl;
     const isGoalNewlyAchieved = projectedTotalMl >= targetWaterMl && totalWaterTodayMl < targetWaterMl;
 
     if (isGoalNewlyAchieved) {
@@ -241,7 +259,7 @@ function MainScreen(): React.ReactElement {
         /* Breathing Visualizer View (Non-Scrollable Zen Stage) */
         <View style={styles.breathTabContainer}>
           <View style={[styles.card, styles.breathCard]}>
-            <BreathingVisualizer />
+            <BreathingVisualizer isPro={isPro} onOpenPaywall={handleOpenPaywall} />
           </View>
         </View>
       ) : (
@@ -279,6 +297,31 @@ function MainScreen(): React.ReactElement {
               </View>
             )}
 
+            {/* Beverage Type Selection Bar */}
+            <Text style={styles.sectionLabel}>Select Drink Type</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
+              {BEVERAGE_TYPES.map((bev) => {
+                const isSelected = selectedBeverage.id === bev.id;
+                return (
+                  <TouchableOpacity
+                    key={bev.id}
+                    style={[
+                      styles.bevChip,
+                      isSelected && { borderColor: bev.color, backgroundColor: `${bev.color}22` },
+                    ]}
+                    onPress={() => handleSelectBeverage(bev)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.bevDot, { backgroundColor: bev.color }]} />
+                    <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
+                      {bev.name} ({Math.round(bev.factor * 100)}%)
+                    </Text>
+                    {bev.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             {/* Quick Add Presets */}
             <Text style={styles.sectionLabel}>Quick Add Log</Text>
             <View style={styles.presetsRow}>
@@ -287,7 +330,7 @@ function MainScreen(): React.ReactElement {
                 onPress={() =>
                   handleAddWater(
                     HYDRATION_CONSTANTS.PRESET_GLASS_ML,
-                    `Glass (${HYDRATION_CONSTANTS.PRESET_GLASS_ML}ml)`
+                    `Glass ${HYDRATION_CONSTANTS.PRESET_GLASS_ML}ml`
                   )
                 }
                 activeOpacity={0.8}
@@ -301,7 +344,7 @@ function MainScreen(): React.ReactElement {
                 onPress={() =>
                   handleAddWater(
                     HYDRATION_CONSTANTS.PRESET_BOTTLE_ML,
-                    `Bottle (${HYDRATION_CONSTANTS.PRESET_BOTTLE_ML}ml)`
+                    `Bottle ${HYDRATION_CONSTANTS.PRESET_BOTTLE_ML}ml`
                   )
                 }
                 activeOpacity={0.8}
@@ -319,6 +362,48 @@ function MainScreen(): React.ReactElement {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Pro Hydration History & Analytics Bar Chart */}
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => {
+              if (!isPro) handleOpenPaywall();
+            }}
+            activeOpacity={isPro ? 1 : 0.85}
+          >
+            <View style={styles.cardHeader}>
+              <BarChart2 size={20} color={COLORS.gold} />
+              <Text style={styles.cardTitle}>7-Day Desk Hydration History</Text>
+              {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
+            </View>
+
+            <View style={styles.chartContainer}>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
+                const isToday = idx === 5;
+                const heightPercent = isToday
+                  ? Math.min(100, Math.round((totalWaterTodayMl / targetWaterMl) * 100))
+                  : idx % 2 === 0 ? 80 : 55;
+                return (
+                  <View key={day} style={styles.chartColumn}>
+                    <View style={styles.barTrack}>
+                      <View
+                        style={[
+                          styles.barFill,
+                          {
+                            height: `${Math.max(10, heightPercent)}%`,
+                            backgroundColor: isToday ? COLORS.water : isPro ? COLORS.emerald : COLORS.border,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[styles.chartDayText, isToday && { color: COLORS.water, fontWeight: '700' }]}>
+                      {day}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
 
           {/* Desk Reminder Notification Control */}
           <TouchableOpacity
@@ -588,6 +673,63 @@ const styles = StyleSheet.create({
     ...THEME.typography.caption,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginTop: 6,
+  },
+  bevScroll: {
+    gap: SPACING.xs,
+    marginVertical: SPACING.xs,
+  },
+  bevChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    backgroundColor: COLORS.surfaceElevated,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  bevDot: {
+    width: 8,
+    height: 8,
+    borderRadius: RADIUS.full,
+  },
+  bevText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.body,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 100,
+    paddingTop: SPACING.sm,
+  },
+  chartColumn: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  barTrack: {
+    width: 14,
+    height: 70,
+    backgroundColor: COLORS.surfaceElevated,
+    borderRadius: RADIUS.sm,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  barFill: {
+    width: '100%',
+    borderRadius: RADIUS.sm,
+  },
+  chartDayText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: COLORS.body,
+    marginTop: 6,
   },
   presetsRow: {
     flexDirection: 'row',

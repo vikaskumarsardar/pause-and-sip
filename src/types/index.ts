@@ -108,6 +108,7 @@ export interface BreathPattern {
   holdOutDurationSec: number;
   phases: BreathPhaseConfig[];
   isCustom?: boolean;
+  isPro?: boolean;
 }
 
 export interface CustomSoundItem {
@@ -125,11 +126,28 @@ export const STORAGE_KEYS = {
   USER_STREAK: '@pause_sip_user_streak',
 } as const;
 
+export interface BeverageItem {
+  id: string;
+  name: string;
+  factor: number;
+  color: string;
+  isPro?: boolean;
+}
+
+export const BEVERAGE_TYPES: BeverageItem[] = [
+  { id: 'water', name: 'Pure Water', factor: 1.0, color: '#38BDF8', isPro: false },
+  { id: 'tea', name: 'Herbal Tea', factor: 0.9, color: '#10B981', isPro: true },
+  { id: 'electro', name: 'Electrolytes', factor: 1.15, color: '#FBBF24', isPro: true },
+  { id: 'coffee', name: 'Desk Coffee', factor: 0.7, color: '#F59E0B', isPro: true },
+];
+
 export interface WaterLog {
   id: string;
   timestamp: number;
   amountMl: number;
   presetLabel: string;
+  beverageTypeId?: string;
+  effectiveMl?: number;
 }
 
 export interface UserStreak {
@@ -165,6 +183,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 4,
     holdOutDurationSec: 4,
     phases: [],
+    isPro: false,
   },
   {
     id: 'sleep_478',
@@ -175,6 +194,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 8,
     holdOutDurationSec: 0,
     phases: [],
+    isPro: true,
   },
   {
     id: 'physio_sigh',
@@ -185,6 +205,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 6,
     holdOutDurationSec: 0,
     phases: [],
+    isPro: false,
   },
   {
     id: 'anxiety_711',
@@ -195,6 +216,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 11,
     holdOutDurationSec: 0,
     phases: [],
+    isPro: true,
   },
   {
     id: 'coherence_55',
@@ -205,6 +227,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 5,
     holdOutDurationSec: 0,
     phases: [],
+    isPro: true,
   },
   {
     id: 'quick_boost',
@@ -215,6 +238,7 @@ export const BREATH_PRESETS: BreathPattern[] = [
     exhaleDurationSec: 2,
     holdOutDurationSec: 0,
     phases: [],
+    isPro: false,
   },
 ];
 
@@ -235,15 +259,16 @@ export interface SoundscapeItem {
   id: SoundscapeType;
   name: string;
   category: 'water' | 'nature' | 'cozy' | 'focus';
+  isPro?: boolean;
 }
 
 export const SOUNDSCAPE_LIST: SoundscapeItem[] = [
-  { id: SOUNDSCAPES.WATERFALL, name: 'Waterfall', category: 'water' },
-  { id: SOUNDSCAPES.RAIN, name: 'Rainfall', category: 'water' },
-  { id: SOUNDSCAPES.OCEAN, name: 'Ocean Surf', category: 'water' },
-  { id: SOUNDSCAPES.FIREPLACE, name: 'Cozy Fire', category: 'cozy' },
-  { id: SOUNDSCAPES.BREEZE, name: 'Forest Wind', category: 'nature' },
-  { id: SOUNDSCAPES.COSMIC, name: '528Hz Miracle', category: 'focus' },
-  { id: SOUNDSCAPES.ALPHA, name: '432Hz Alpha', category: 'focus' },
+  { id: SOUNDSCAPES.WATERFALL, name: 'Waterfall', category: 'water', isPro: false },
+  { id: SOUNDSCAPES.RAIN, name: 'Rainfall', category: 'water', isPro: false },
+  { id: SOUNDSCAPES.OCEAN, name: 'Ocean Surf', category: 'water', isPro: false },
+  { id: SOUNDSCAPES.FIREPLACE, name: 'Cozy Fire', category: 'cozy', isPro: true },
+  { id: SOUNDSCAPES.BREEZE, name: 'Forest Wind', category: 'nature', isPro: true },
+  { id: SOUNDSCAPES.COSMIC, name: '528Hz Miracle', category: 'focus', isPro: true },
+  { id: SOUNDSCAPES.ALPHA, name: '432Hz Alpha', category: 'focus', isPro: true },
 ];
 
