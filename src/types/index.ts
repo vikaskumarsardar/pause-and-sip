@@ -36,6 +36,12 @@ export const PACKAGE_ID = {
   RC_LIFETIME: '$rc_lifetime',
 } as const;
 
+export const REVENUECAT_KEYS = {
+  APPLE: 'appl_demo_key_pause_sip_shipathon',
+  GOOGLE: 'goog_demo_key_pause_sip_shipathon',
+  PRO_ENTITLEMENT_ID: 'pro_access',
+} as const;
+
 export const HYDRATION_CONSTANTS = {
   DEFAULT_DAILY_TARGET_ML: 2500,
   PRESET_GLASS_ML: 250,
@@ -60,6 +66,8 @@ export const BREATHING_CONSTANTS = {
 } as const;
 
 export const NOTIFICATION_CONSTANTS = {
+  ONESIGNAL_APP_ID: 'pause-sip-onesignal-app-id-demo',
+  REMINDER_TAG_KEY: 'desk_reminder_interval',
   DEFAULT_INTERVAL_MINUTES: 45,
   DEBUG_LOG_LEVEL_VERBOSE: 6,
 } as const;

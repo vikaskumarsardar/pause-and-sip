@@ -1,16 +1,11 @@
 import { Platform } from 'react-native';
-import { SubscriptionOffering, PAYWALL_PLAN, PACKAGE_ID, PLATFORM_OS } from '@/types';
+import { SubscriptionOffering, PAYWALL_PLAN, PACKAGE_ID, PLATFORM_OS, REVENUECAT_KEYS } from '@/types';
 
-export const PRO_ENTITLEMENT_ID = 'pro_access';
+export const PRO_ENTITLEMENT_ID = REVENUECAT_KEYS.PRO_ENTITLEMENT_ID;
 
 const FALLBACK_PRICES = {
   MONTHLY: '$1.99',
   LIFETIME: '$9.99',
-} as const;
-
-const REVENUECAT_KEYS = {
-  apple: 'appl_demo_key_pause_sip_shipathon',
-  google: 'goog_demo_key_pause_sip_shipathon',
 } as const;
 
 let Purchases: any = null;
@@ -48,7 +43,7 @@ export class PurchaseService {
     try {
       if (hasNativeSupport) {
         const isAppleDevice = Platform.OS === PLATFORM_OS.IOS;
-        const apiKey = isAppleDevice ? REVENUECAT_KEYS.apple : REVENUECAT_KEYS.google;
+        const apiKey = isAppleDevice ? REVENUECAT_KEYS.APPLE : REVENUECAT_KEYS.GOOGLE;
         
         if (Purchases.LOG_LEVEL) {
           await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);

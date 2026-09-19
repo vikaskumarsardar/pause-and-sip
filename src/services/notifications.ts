@@ -1,9 +1,6 @@
 import { Platform } from 'react-native';
 import { NOTIFICATION_CONSTANTS, PLATFORM_OS } from '@/types';
 
-const ONESIGNAL_APP_ID = 'pause-sip-onesignal-app-id-demo';
-const REMINDER_TAG_KEY = 'desk_reminder_interval';
-
 let OneSignal: any = null;
 const isSupportedNativePlatform = Platform.OS === PLATFORM_OS.IOS || Platform.OS === PLATFORM_OS.ANDROID;
 
@@ -30,7 +27,7 @@ export class NotificationService {
         if (OneSignal.Debug) {
           OneSignal.Debug.setLogLevel(NOTIFICATION_CONSTANTS.DEBUG_LOG_LEVEL_VERBOSE);
         }
-        OneSignal.initialize(ONESIGNAL_APP_ID);
+        OneSignal.initialize(NOTIFICATION_CONSTANTS.ONESIGNAL_APP_ID);
 
         // Prompt for Push Notification Permission
         await OneSignal.Notifications.requestPermission(true);
@@ -56,7 +53,7 @@ export class NotificationService {
           await OneSignal.Notifications.requestPermission(true);
         }
         const intervalString = intervalMinutes.toString();
-        OneSignal.User.addTag(REMINDER_TAG_KEY, intervalString);
+        OneSignal.User.addTag(NOTIFICATION_CONSTANTS.REMINDER_TAG_KEY, intervalString);
         return true;
       } else {
         console.log(
@@ -76,7 +73,7 @@ export class NotificationService {
 
     try {
       if (canDisableNativeNotification) {
-        OneSignal.User.removeTag(REMINDER_TAG_KEY);
+        OneSignal.User.removeTag(NOTIFICATION_CONSTANTS.REMINDER_TAG_KEY);
       }
     } catch (error) {
       console.warn('[NotificationService] Error disabling reminders:', error);
