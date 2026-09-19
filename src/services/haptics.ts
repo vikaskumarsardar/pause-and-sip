@@ -1,17 +1,28 @@
+import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+
+const PLATFORM_OS = {
+  IOS: 'ios',
+  ANDROID: 'android',
+  WEB: 'web',
+} as const;
+
+const isHapticsSupported = Platform.OS === PLATFORM_OS.IOS || Platform.OS === PLATFORM_OS.ANDROID;
 
 export class HapticService {
   /** Light impact for subtle button presses & toggles */
   static async lightTouch(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
-      // Haptics fail gracefully on unsupported hardware/web
+      // Graceful fallback for devices without haptic motor
     }
   }
 
   /** Medium impact for logging water or switching modes */
   static async mediumTouch(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {
@@ -21,6 +32,7 @@ export class HapticService {
 
   /** Heavy impact for milestone completions */
   static async heavyTouch(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     } catch {
@@ -30,6 +42,7 @@ export class HapticService {
 
   /** Selection tick for sliders or scroll selectors */
   static async selection(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.selectionAsync();
     } catch {
@@ -39,6 +52,7 @@ export class HapticService {
 
   /** Success notification haptic */
   static async success(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
@@ -48,6 +62,7 @@ export class HapticService {
 
   /** Warning notification haptic */
   static async warning(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch {
@@ -57,6 +72,7 @@ export class HapticService {
 
   /** Breathing Inhale guide haptic */
   static async breathInhalePulse(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
@@ -66,6 +82,7 @@ export class HapticService {
 
   /** Breathing Exhale guide haptic */
   static async breathExhalePulse(): Promise<void> {
+    if (!isHapticsSupported) return;
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
     } catch {
