@@ -1,13 +1,8 @@
 import { Platform } from 'react-native';
-import { NOTIFICATION_CONSTANTS } from '@/types';
+import { NOTIFICATION_CONSTANTS, PLATFORM_OS } from '@/types';
 
 const ONESIGNAL_APP_ID = 'pause-sip-onesignal-app-id-demo';
 const REMINDER_TAG_KEY = 'desk_reminder_interval';
-
-const PLATFORM_OS = {
-  IOS: 'ios',
-  ANDROID: 'android',
-} as const;
 
 let OneSignal: any = null;
 const isSupportedNativePlatform = Platform.OS === PLATFORM_OS.IOS || Platform.OS === PLATFORM_OS.ANDROID;

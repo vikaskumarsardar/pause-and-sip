@@ -1,12 +1,7 @@
 import { Platform } from 'react-native';
-import { SubscriptionOffering, PAYWALL_PLAN, PACKAGE_ID } from '@/types';
+import { SubscriptionOffering, PAYWALL_PLAN, PACKAGE_ID, PLATFORM_OS } from '@/types';
 
 export const PRO_ENTITLEMENT_ID = 'pro_access';
-
-const PLATFORM_OS = {
-  IOS: 'ios',
-  ANDROID: 'android',
-} as const;
 
 const FALLBACK_PRICES = {
   MONTHLY: '$1.99',

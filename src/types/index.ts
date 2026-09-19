@@ -5,6 +5,14 @@ export const APP_TAB = {
 
 export type AppTab = (typeof APP_TAB)[keyof typeof APP_TAB];
 
+export const PLATFORM_OS = {
+  IOS: 'ios',
+  ANDROID: 'android',
+  WEB: 'web',
+} as const;
+
+export type PlatformOS = (typeof PLATFORM_OS)[keyof typeof PLATFORM_OS];
+
 export const BREATH_PHASE = {
   INHALE: 'inhale',
   HOLD_IN: 'holdIn',

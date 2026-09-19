@@ -1,11 +1,6 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
-
-const PLATFORM_OS = {
-  IOS: 'ios',
-  ANDROID: 'android',
-  WEB: 'web',
-} as const;
+import { PLATFORM_OS } from '@/types';
 
 const isHapticsSupported = Platform.OS === PLATFORM_OS.IOS || Platform.OS === PLATFORM_OS.ANDROID;
 
