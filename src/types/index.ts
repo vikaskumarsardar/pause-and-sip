@@ -37,9 +37,9 @@ export const PACKAGE_ID = {
 } as const;
 
 export const REVENUECAT_KEYS = {
-  APPLE: 'appl_demo_key_pause_sip_shipathon',
-  GOOGLE: 'goog_demo_key_pause_sip_shipathon',
-  PRO_ENTITLEMENT_ID: 'pro_access',
+  APPLE: process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'appl_demo_key_pause_sip_shipathon',
+  GOOGLE: process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'goog_demo_key_pause_sip_shipathon',
+  PRO_ENTITLEMENT_ID: process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro_access',
 } as const;
 
 export const HYDRATION_CONSTANTS = {
@@ -66,7 +66,7 @@ export const BREATHING_CONSTANTS = {
 } as const;
 
 export const NOTIFICATION_CONSTANTS = {
-  ONESIGNAL_APP_ID: 'pause-sip-onesignal-app-id-demo',
+  ONESIGNAL_APP_ID: process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || 'pause-sip-onesignal-app-id-demo',
   REMINDER_TAG_KEY: 'desk_reminder_interval',
   DEFAULT_INTERVAL_MINUTES: 45,
   DEBUG_LOG_LEVEL_VERBOSE: 6,
