@@ -6,6 +6,7 @@ import {
   StatusBar,
   TouchableOpacity,
   ScrollView,
+  Modal,
 } from 'react-native';
 import {
   SafeAreaProvider,
@@ -27,6 +28,8 @@ import {
   Download,
   FileText,
   Sliders,
+  Settings,
+  X,
 } from 'lucide-react-native';
 
 import { THEME, COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
@@ -84,6 +87,8 @@ function MainScreen(): React.ReactElement {
   const [activeThemeId, setActiveThemeId] = useState<AppThemeId>(APP_CONSTANTS.DEFAULT_THEME_ID);
   const [breakIntervalMinutes, setBreakIntervalMinutes] = useState<number>(NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES);
   const [exportStatusMessage, setExportStatusMessage] = useState<string | null>(null);
+
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -286,15 +291,25 @@ function MainScreen(): React.ReactElement {
 
       {/* Header Bar */}
       <View style={styles.header}>
-        <View style={styles.brandRow}>
+        <TouchableOpacity
+          style={styles.brandRow}
+          onPress={async () => {
+            await HapticService.lightTouch();
+            setIsSettingsModalOpen(true);
+          }}
+          activeOpacity={0.7}
+        >
           <View style={styles.brandIconContainer}>
             <Droplets size={20} color={COLORS.water} />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.brandTitle} numberOfLines={1}>Pause & Sip</Text>
-            <Text style={styles.brandSubtitle} numberOfLines={1}>Desk Companion • Shipathon 2026</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.brandTitle} numberOfLines={1}>Pause & Sip</Text>
+              <Settings size={13} color={COLORS.gold} />
+            </View>
+            <Text style={styles.brandSubtitle} numberOfLines={1}>Tap for Settings & Themes</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.headerRightActions}>
           {/* Pro Entitlement Status / Upgrade Button */}
@@ -317,7 +332,7 @@ function MainScreen(): React.ReactElement {
         </View>
       </View>
 
-      {/* Segmented Tab Switcher */}
+      {/* Segmented 2-Tab Switcher */}
       <View style={styles.tabBarContainer}>
         <TouchableOpacity
           style={[
@@ -373,7 +388,7 @@ function MainScreen(): React.ReactElement {
           </View>
         </View>
       ) : (
-        /* Hydration & Settings Area (Scrollable Log List) */
+        /* Hydration Tracker View (Scrollable Log List) */
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -489,10 +504,19 @@ function MainScreen(): React.ReactElement {
 
             <View style={styles.chartContainer}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, idx) => {
-                const isToday = idx === 5;
+                const isToday = idx === APP_CONSTANTS.TODAY_CHART_INDEX;
+                const isEvenDay = idx % 2 === 0;
+                const dayHeight = isEvenDay
+                  ? APP_CONSTANTS.EVEN_DAY_HEIGHT_PERCENT
+                  : APP_CONSTANTS.ODD_DAY_HEIGHT_PERCENT;
+
                 const heightPercent = isToday
-                  ? Math.min(100, Math.round((totalWaterTodayMl / targetWaterMl) * 100))
-                  : idx % 2 === 0 ? 80 : 55;
+                  ? Math.min(
+                      HYDRATION_CONSTANTS.PERCENT_MAX,
+                      Math.round((totalWaterTodayMl / targetWaterMl) * HYDRATION_CONSTANTS.PERCENT_MULTIPLIER)
+                    )
+                  : dayHeight;
+
                 return (
                   <View key={day} style={styles.chartColumn}>
                     <View style={styles.barTrack}>
@@ -514,142 +538,166 @@ function MainScreen(): React.ReactElement {
               })}
             </View>
           </TouchableOpacity>
-
-          {/* Pro Aesthetic Themes Card */}
-          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
-            <View style={styles.cardHeader}>
-              <Palette size={20} color={COLORS.gold} />
-              <Text style={styles.cardTitle}>Pro OLED & Aesthetic Themes</Text>
-              {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
-              {APP_THEMES.map((theme) => {
-                const isSelected = activeThemeId === theme.id;
-                return (
-                  <TouchableOpacity
-                    key={theme.id}
-                    style={[
-                      styles.bevChip,
-                      isSelected && { borderColor: theme.accent, backgroundColor: `${theme.accent}22` },
-                    ]}
-                    onPress={() => handleSelectTheme(theme)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.bevDot, { backgroundColor: theme.accent }]} />
-                    <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
-                      {theme.name}
-                    </Text>
-                    {theme.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Desk Reminder Notification & Interval Control */}
-          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
-            <TouchableOpacity
-              style={styles.reminderBanner}
-              onPress={handleToggleReminders}
-              activeOpacity={0.85}
-            >
-              <View style={styles.reminderLeftGroup}>
-                <View style={styles.bellIconBox}>
-                  <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
-                </View>
-                <View>
-                  <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
-                  <Text style={styles.reminderSubtitle}>
-                    {remindersActive
-                      ? `Active: Gentle micro-pause every ${breakIntervalMinutes} min`
-                      : 'Paused: Tap to enable'}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
-            </TouchableOpacity>
-
-            <Text style={styles.sectionLabel}>Remind Frequency Interval</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
-              {BREAK_INTERVAL_OPTIONS.map((opt) => {
-                const isSelected = breakIntervalMinutes === opt.minutes;
-                return (
-                  <TouchableOpacity
-                    key={opt.minutes}
-                    style={[
-                      styles.bevChip,
-                      isSelected && { borderColor: COLORS.water, backgroundColor: `${COLORS.water}22` },
-                    ]}
-                    onPress={() => handleSelectInterval(opt)}
-                    activeOpacity={0.8}
-                  >
-                    <Sliders size={12} color={isSelected ? COLORS.water : COLORS.body} />
-                    <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
-                      {opt.label}
-                    </Text>
-                    {opt.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Pro Desk Data Export Card */}
-          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
-            <View style={styles.cardHeader}>
-              <Download size={20} color={COLORS.gold} />
-              <Text style={styles.cardTitle}>Pro Hydration Data Export</Text>
-              {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
-            </View>
-
-            {exportStatusMessage && (
-              <View style={styles.completedBanner}>
-                <CheckCircle2 size={16} color={COLORS.inhale} />
-                <Text style={styles.completedText}>{exportStatusMessage}</Text>
-              </View>
-            )}
-
-            <View style={styles.presetsRow}>
-              <TouchableOpacity
-                style={styles.presetButton}
-                onPress={() => handleExportData('csv')}
-                activeOpacity={0.8}
-              >
-                <Download size={16} color={COLORS.gold} />
-                <Text style={styles.presetText}>Export CSV</Text>
-                {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.presetButton}
-                onPress={() => handleExportData('json')}
-                activeOpacity={0.8}
-              >
-                <FileText size={16} color={COLORS.gold} />
-                <Text style={styles.presetText}>Export JSON</Text>
-                {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Upgrade Callout Card (if not Pro) */}
-          {!isPro && (
-            <TouchableOpacity
-              style={styles.proBannerCard}
-              onPress={handleOpenPaywall}
-              activeOpacity={0.85}
-            >
-              <View style={styles.proBannerHeader}>
-                <Sparkles size={20} color={COLORS.gold} />
-                <Text style={styles.proBannerTitle}>Unlock Pause & Sip Pro</Text>
-              </View>
-              <Text style={styles.proBannerBody}>
-                Get 4-7-8 Deep Sleep breathing, OLED dark themes, custom break intervals, and data export.
-              </Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
       )}
+
+      {/* App Settings & Preferences Modal */}
+      <Modal visible={isSettingsModalOpen} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Settings size={20} color={COLORS.gold} />
+                <Text style={styles.modalTitle}>App Settings & Preferences</Text>
+              </View>
+              <TouchableOpacity
+                onPress={async () => {
+                  await HapticService.lightTouch();
+                  setIsSettingsModalOpen(false);
+                }}
+              >
+                <X size={20} color={COLORS.body} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScrollBody}>
+              {/* Pro Aesthetic Themes Card */}
+              <View style={[styles.card, { backgroundColor: currentTheme.background, borderColor: currentTheme.border }]}>
+                <View style={styles.cardHeader}>
+                  <Palette size={20} color={COLORS.gold} />
+                  <Text style={styles.cardTitle}>Pro OLED & Aesthetic Themes</Text>
+                  {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
+                  {APP_THEMES.map((theme) => {
+                    const isSelected = activeThemeId === theme.id;
+                    return (
+                      <TouchableOpacity
+                        key={theme.id}
+                        style={[
+                          styles.bevChip,
+                          isSelected && { borderColor: theme.accent, backgroundColor: `${theme.accent}22` },
+                        ]}
+                        onPress={() => handleSelectTheme(theme)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.bevDot, { backgroundColor: theme.accent }]} />
+                        <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
+                          {theme.name}
+                        </Text>
+                        {theme.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Desk Reminder Notification & Interval Control */}
+              <View style={[styles.card, { backgroundColor: currentTheme.background, borderColor: currentTheme.border }]}>
+                <TouchableOpacity
+                  style={styles.reminderBanner}
+                  onPress={handleToggleReminders}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.reminderLeftGroup}>
+                    <View style={styles.bellIconBox}>
+                      <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
+                    </View>
+                    <View>
+                      <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
+                      <Text style={styles.reminderSubtitle}>
+                        {remindersActive
+                          ? `Active: Gentle micro-pause every ${breakIntervalMinutes} min`
+                          : 'Paused: Tap to enable'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
+                </TouchableOpacity>
+
+                <Text style={styles.sectionLabel}>Remind Frequency Interval</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
+                  {BREAK_INTERVAL_OPTIONS.map((opt) => {
+                    const isSelected = breakIntervalMinutes === opt.minutes;
+                    return (
+                      <TouchableOpacity
+                        key={opt.minutes}
+                        style={[
+                          styles.bevChip,
+                          isSelected && { borderColor: COLORS.water, backgroundColor: `${COLORS.water}22` },
+                        ]}
+                        onPress={() => handleSelectInterval(opt)}
+                        activeOpacity={0.8}
+                      >
+                        <Sliders size={12} color={isSelected ? COLORS.water : COLORS.body} />
+                        <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
+                          {opt.label}
+                        </Text>
+                        {opt.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+
+              {/* Pro Desk Data Export Card */}
+              <View style={[styles.card, { backgroundColor: currentTheme.background, borderColor: currentTheme.border }]}>
+                <View style={styles.cardHeader}>
+                  <Download size={20} color={COLORS.gold} />
+                  <Text style={styles.cardTitle}>Pro Hydration Data Export</Text>
+                  {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
+                </View>
+
+                {exportStatusMessage && (
+                  <View style={styles.completedBanner}>
+                    <CheckCircle2 size={16} color={COLORS.inhale} />
+                    <Text style={styles.completedText}>{exportStatusMessage}</Text>
+                  </View>
+                )}
+
+                <View style={styles.presetsRow}>
+                  <TouchableOpacity
+                    style={styles.presetButton}
+                    onPress={() => handleExportData('csv')}
+                    activeOpacity={0.8}
+                  >
+                    <Download size={16} color={COLORS.gold} />
+                    <Text style={styles.presetText}>Export CSV</Text>
+                    {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.presetButton}
+                    onPress={() => handleExportData('json')}
+                    activeOpacity={0.8}
+                  >
+                    <FileText size={16} color={COLORS.gold} />
+                    <Text style={styles.presetText}>Export JSON</Text>
+                    {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Upgrade Callout Card (if not Pro) */}
+              {!isPro && (
+                <TouchableOpacity
+                  style={styles.proBannerCard}
+                  onPress={handleOpenPaywall}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.proBannerHeader}>
+                    <Sparkles size={20} color={COLORS.gold} />
+                    <Text style={styles.proBannerTitle}>Unlock Pause & Sip Pro</Text>
+                  </View>
+                  <Text style={styles.proBannerBody}>
+                    Get 4-7-8 Deep Sleep breathing, OLED dark themes, custom break intervals, and data export.
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Paywall Bottom Sheet Modal */}
       <PaywallModal
@@ -797,6 +845,10 @@ const styles = StyleSheet.create({
   },
   activeWaterTab: {
     borderColor: COLORS.water,
+    backgroundColor: COLORS.surfaceElevated,
+  },
+  activeSettingsTab: {
+    borderColor: COLORS.gold,
     backgroundColor: COLORS.surfaceElevated,
   },
   tabText: {
@@ -1036,5 +1088,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.title,
     lineHeight: 18,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    borderWidth: 1,
+    padding: SPACING.md,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    ...THEME.typography.h3,
+    color: COLORS.title,
+  },
+  modalScrollBody: {
+    gap: SPACING.md,
+    paddingBottom: SPACING.lg,
   },
 });

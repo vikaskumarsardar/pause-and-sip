@@ -10,6 +10,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -383,6 +384,28 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handlePickDocumentNative = async (): Promise<void> => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        copyToCacheDirectory: true,
+      });
+
+      const hasSelectedAssets = Boolean(!result.canceled && result.assets && result.assets.length > 0);
+      if (hasSelectedAssets && result.assets && result.assets[0]) {
+        const selectedFile = result.assets[0];
+        setSoundUri(selectedFile.uri);
+        const hasNoSoundName = soundName.trim().length === 0;
+        if (hasNoSoundName && selectedFile.name) {
+          const cleanedName = selectedFile.name.replace(/\.[^/.]+$/, '');
+          setSoundName(cleanedName);
+        }
+      }
+    } catch (error) {
+      console.warn('[BreathingVisualizer] Native document picker error:', error);
+    }
   };
 
   const handleSaveCustomSound = async (): Promise<void> => {
@@ -837,11 +860,13 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                 onChangeText={setSoundName}
               />
 
-              {/* Web Local Audio File Picker */}
-              {Platform.OS === 'web' && (
+              {/* Local Audio File Picker (Web HTML Input & Native expo-document-picker) */}
+              {Platform.OS === 'web' ? (
                 <View style={styles.uploadBox}>
                   <Upload size={20} color={COLORS.water} />
-                  <Text style={styles.uploadBoxText}>Choose Local MP3/WAV File</Text>
+                  <Text style={styles.uploadBoxText}>
+                    {soundUri ? 'Local File Selected ✓' : 'Choose Local MP3/WAV File'}
+                  </Text>
                   <input
                     type="file"
                     accept="audio/*"
@@ -854,6 +879,17 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
                     } as any}
                   />
                 </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadBox}
+                  onPress={handlePickDocumentNative}
+                  activeOpacity={0.8}
+                >
+                  <Upload size={20} color={COLORS.water} />
+                  <Text style={styles.uploadBoxText}>
+                    {soundUri ? 'Local Audio Selected ✓' : 'Choose Local Audio File (MP3/WAV)'}
+                  </Text>
+                </TouchableOpacity>
               )}
 
               <Text style={styles.inputLabel}>Or Direct Sound Stream URL</Text>
