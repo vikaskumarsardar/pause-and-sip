@@ -241,12 +241,7 @@ function MainScreen(): React.ReactElement {
         /* Breathing Visualizer View (Non-Scrollable Zen Stage) */
         <View style={styles.breathTabContainer}>
           <View style={[styles.card, styles.breathCard]}>
-            <BreathingVisualizer
-              inhaleSec={4}
-              holdInSec={4}
-              exhaleSec={4}
-              holdOutSec={4}
-            />
+            <BreathingVisualizer />
           </View>
         </View>
       ) : (

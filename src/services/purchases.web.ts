@@ -23,8 +23,12 @@ export class PurchaseService {
 
   /** Web adapter init */
   static async initPurchases(): Promise<void> {
-    console.log('[PurchaseService Web] Web dev sandbox adapter active.');
+    console.log('[PurchaseService Web] Web billing adapter initialized.');
     PurchaseService.isInitialized = true;
+  }
+
+  static getIsInitialized(): boolean {
+    return PurchaseService.isInitialized;
   }
 
   /** Check Pro entitlement on Web */

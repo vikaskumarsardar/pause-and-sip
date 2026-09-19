@@ -12,6 +12,7 @@ export const COLORS = {
   water: '#38BDF8',      // Fluid Sky Blue
   waterGlow: 'rgba(56, 189, 248, 0.25)',
   inhale: '#10B981',     // Soft Emerald
+  emerald: '#10B981',    // Emerald Accent
   inhaleGlow: 'rgba(16, 185, 129, 0.25)',
   exhale: '#818CF8',     // Gentle Periwinkle
   exhaleGlow: 'rgba(129, 140, 248, 0.25)',

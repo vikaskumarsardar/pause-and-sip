@@ -1,140 +1,189 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WaterLogEntry } from '@/types/water';
-import { BreathSessionLog } from '@/types/breath';
+import {
+  BreathPattern,
+  CustomSoundItem,
+  STORAGE_KEYS,
+  WaterLog,
+  HYDRATION_CONSTANTS,
+  NOTIFICATION_CONSTANTS,
+} from '@/types';
 import { UserProfileSettings, UserStreak } from '@/types/user';
-import { HYDRATION_CONSTANTS, BREATH_PHASE, NOTIFICATION_CONSTANTS } from '@/types';
-
-const STORAGE_KEYS = {
-  WATER_LOGS: '@pause_sip/water_logs',
-  BREATH_LOGS: '@pause_sip/breath_logs',
-  USER_SETTINGS: '@pause_sip/user_settings',
-  USER_STREAK: '@pause_sip/user_streak',
-  ENTITLEMENT: '@pause_sip/entitlement',
-} as const;
-
-const WORK_HOURS = {
-  START_HOUR: 9,
-  END_HOUR: 18,
-  INITIAL_STREAK_COUNT: 1,
-} as const;
-
-export const DEFAULT_USER_SETTINGS: UserProfileSettings = {
-  dailyWaterTargetMl: HYDRATION_CONSTANTS.DEFAULT_DAILY_TARGET_ML,
-  unitSystem: 'ml',
-  deskReminders: {
-    enabled: true,
-    intervalMinutes: NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES,
-    startHour: WORK_HOURS.START_HOUR,
-    endHour: WORK_HOURS.END_HOUR,
-    hapticFeedback: true,
-    soundEnabled: true,
-  },
-  breathingDefaultPattern: BREATH_PHASE.HOLD_IN,
-  hasSeenOnboarding: false,
-};
-
-export const DEFAULT_USER_STREAK: UserStreak = {
-  currentStreakDays: WORK_HOURS.INITIAL_STREAK_COUNT,
-  bestStreakDays: WORK_HOURS.INITIAL_STREAK_COUNT,
-  lastActiveDate: new Date().toISOString().split('T')[0],
-};
 
 export class StorageService {
-  /** Save water intake logs */
-  static async saveWaterLogs(logs: WaterLogEntry[]): Promise<void> {
+  /** Load custom user-created breathing patterns */
+  static async getCustomPatterns(): Promise<BreathPattern[]> {
     try {
-      const payload = JSON.stringify(logs);
-      await AsyncStorage.setItem(STORAGE_KEYS.WATER_LOGS, payload);
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_BREATH_PATTERNS);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-      console.error('[StorageService] Error saving water logs:', error);
-    }
-  }
-
-  /** Load water intake logs */
-  static async getWaterLogs(): Promise<WaterLogEntry[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.WATER_LOGS);
-      const parsedLogs: WaterLogEntry[] = data ? JSON.parse(data) : [];
-      return parsedLogs;
-    } catch (error) {
-      console.error('[StorageService] Error reading water logs:', error);
+      console.warn('[StorageService] Error loading custom patterns:', error);
       return [];
     }
   }
 
-  /** Save breathing session history */
-  static async saveBreathLogs(logs: BreathSessionLog[]): Promise<void> {
+  /** Save a new or edited custom breathing pattern */
+  static async saveCustomPattern(
+    pattern: Omit<BreathPattern, 'id'> & { id?: string }
+  ): Promise<BreathPattern[]> {
     try {
-      const payload = JSON.stringify(logs);
-      await AsyncStorage.setItem(STORAGE_KEYS.BREATH_LOGS, payload);
-    } catch (error) {
-      console.error('[StorageService] Error saving breath logs:', error);
-    }
-  }
+      const existing = await StorageService.getCustomPatterns();
+      const newId = pattern.id || `custom_${Date.now()}`;
+      const newPattern: BreathPattern = {
+        ...pattern,
+        id: newId,
+        isCustom: true,
+        phases: [],
+      };
 
-  /** Load breathing session history */
-  static async getBreathLogs(): Promise<BreathSessionLog[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.BREATH_LOGS);
-      const parsedLogs: BreathSessionLog[] = data ? JSON.parse(data) : [];
-      return parsedLogs;
+      const existingIndex = existing.findIndex((p) => p.id === newId);
+      let updated: BreathPattern[];
+
+      if (existingIndex >= 0) {
+        updated = [...existing];
+        updated[existingIndex] = newPattern;
+      } else {
+        updated = [newPattern, ...existing];
+      }
+
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.CUSTOM_BREATH_PATTERNS,
+        JSON.stringify(updated)
+      );
+
+      return updated;
     } catch (error) {
-      console.error('[StorageService] Error reading breath logs:', error);
+      console.warn('[StorageService] Error saving custom pattern:', error);
       return [];
     }
   }
 
-  /** Save user profile settings */
-  static async saveUserSettings(settings: UserProfileSettings): Promise<void> {
+  /** Load custom user audio sound FX */
+  static async getCustomSounds(): Promise<CustomSoundItem[]> {
     try {
-      const payload = JSON.stringify(settings);
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_SETTINGS, payload);
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_SOUNDS);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
-      console.error('[StorageService] Error saving settings:', error);
+      console.warn('[StorageService] Error loading custom sounds:', error);
+      return [];
     }
   }
 
-  /** Load user profile settings */
+  /** Save a custom user audio sound FX */
+  static async saveCustomSound(
+    sound: Omit<CustomSoundItem, 'id' | 'isCustom'> & { id?: string }
+  ): Promise<CustomSoundItem[]> {
+    try {
+      const existing = await StorageService.getCustomSounds();
+      const newId = sound.id || `sound_${Date.now()}`;
+      const newSound: CustomSoundItem = {
+        ...sound,
+        id: newId,
+        isCustom: true,
+      };
+
+      const updated = [newSound, ...existing.filter((s) => s.id !== newId)];
+      await AsyncStorage.setItem(STORAGE_KEYS.CUSTOM_SOUNDS, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.warn('[StorageService] Error saving custom sound:', error);
+      return [];
+    }
+  }
+
+  /** Delete a custom user audio sound FX */
+  static async deleteCustomSound(soundId: string): Promise<CustomSoundItem[]> {
+    try {
+      const existing = await StorageService.getCustomSounds();
+      const updated = existing.filter((s) => s.id !== soundId);
+      await AsyncStorage.setItem(STORAGE_KEYS.CUSTOM_SOUNDS, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.warn('[StorageService] Error deleting custom sound:', error);
+      return [];
+    }
+  }
+
+  /** Delete a custom breathing pattern by ID */
+  static async deleteCustomPattern(patternId: string): Promise<BreathPattern[]> {
+    try {
+      const existing = await StorageService.getCustomPatterns();
+      const updated = existing.filter((p) => p.id !== patternId);
+
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.CUSTOM_BREATH_PATTERNS,
+        JSON.stringify(updated)
+      );
+
+      return updated;
+    } catch (error) {
+      console.warn('[StorageService] Error deleting custom pattern:', error);
+      return [];
+    }
+  }
+
+  /** Load desk user settings */
   static async getUserSettings(): Promise<UserProfileSettings> {
     try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_SETTINGS);
-      const parsedSettings: UserProfileSettings = data ? JSON.parse(data) : DEFAULT_USER_SETTINGS;
-      return parsedSettings;
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.DESK_SETTINGS);
+      if (data) return JSON.parse(data);
     } catch (error) {
-      console.error('[StorageService] Error reading settings:', error);
-      return DEFAULT_USER_SETTINGS;
+      console.warn('[StorageService] Error loading user settings:', error);
     }
+    return {
+      dailyWaterTargetMl: HYDRATION_CONSTANTS.DEFAULT_DAILY_TARGET_ML,
+      unitSystem: 'ml',
+      deskReminders: {
+        enabled: true,
+        intervalMinutes: NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES,
+        startHour: 9,
+        endHour: 18,
+        hapticFeedback: true,
+        soundEnabled: true,
+      },
+      breathingDefaultPattern: 'box',
+      hasSeenOnboarding: true,
+    };
   }
 
-  /** Save user streak data */
-  static async saveUserStreak(streak: UserStreak): Promise<void> {
-    try {
-      const payload = JSON.stringify(streak);
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_STREAK, payload);
-    } catch (error) {
-      console.error('[StorageService] Error saving streak:', error);
-    }
-  }
-
-  /** Load user streak data */
+  /** Load user streak */
   static async getUserStreak(): Promise<UserStreak> {
     try {
       const data = await AsyncStorage.getItem(STORAGE_KEYS.USER_STREAK);
-      const parsedStreak: UserStreak = data ? JSON.parse(data) : DEFAULT_USER_STREAK;
-      return parsedStreak;
+      if (data) return JSON.parse(data);
     } catch (error) {
-      console.error('[StorageService] Error reading streak:', error);
-      return DEFAULT_USER_STREAK;
+      console.warn('[StorageService] Error loading user streak:', error);
     }
+    return {
+      currentStreakDays: 1,
+      bestStreakDays: 1,
+      lastActiveDate: new Date().toISOString().split('T')[0],
+    };
   }
 
-  /** Clear all local data (Reset) */
-  static async clearAllData(): Promise<void> {
+  /** Load water logs */
+  static async getWaterLogs(): Promise<WaterLog[]> {
     try {
-      const keysToClear = Object.values(STORAGE_KEYS);
-      await AsyncStorage.multiRemove(keysToClear);
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.WATER_LOGS);
+      if (data) {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : [];
+      }
     } catch (error) {
-      console.error('[StorageService] Error clearing storage:', error);
+      console.warn('[StorageService] Error loading water logs:', error);
+    }
+    return [];
+  }
+
+  /** Save water logs */
+  static async saveWaterLogs(logs: WaterLog[]): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.WATER_LOGS, JSON.stringify(logs));
+    } catch (error) {
+      console.warn('[StorageService] Error saving water logs:', error);
     }
   }
 }

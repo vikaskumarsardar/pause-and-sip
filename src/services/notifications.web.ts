@@ -3,6 +3,10 @@ import { NOTIFICATION_CONSTANTS } from '@/types';
 export class NotificationService {
   private static isInitialized: boolean = false;
 
+  static getIsInitialized(): boolean {
+    return NotificationService.isInitialized;
+  }
+
   /** Web mock adapter for OneSignal push notification initialization */
   static async initOneSignal(): Promise<void> {
     console.log('[NotificationService Web] Web notification adapter initialized.');
