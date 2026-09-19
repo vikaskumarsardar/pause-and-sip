@@ -36,6 +36,7 @@ import { StorageService } from '@/services/storage';
 import { HapticService } from '@/services/haptics';
 import { PurchaseService } from '@/services/purchases';
 import { NotificationService } from '@/services/notifications';
+import { ExportService } from '@/services/export';
 import { UserProfileSettings, UserStreak } from '@/types/user';
 import {
   WaterLog,
@@ -65,16 +66,6 @@ const APP_CONSTANTS = {
 const EXPORT_FORMAT = {
   CSV: 'csv',
   JSON: 'json',
-} as const;
-
-const EXPORT_MIME_TYPE = {
-  CSV: 'text/csv',
-  JSON: 'application/json',
-} as const;
-
-const EXPORT_FILE_NAME_PREFIX = {
-  CSV: 'pause_sip_hydration_',
-  JSON: 'pause_sip_backup_',
 } as const;
 
 const EXPORT_CSV_HEADERS = 'ID,Timestamp,Date,Beverage,AmountML\n';
@@ -198,6 +189,7 @@ function MainScreen(): React.ReactElement {
     }
     await HapticService.success();
     try {
+      let exportContent = '';
       switch (format) {
         case EXPORT_FORMAT.CSV: {
           const rows = waterLogs
@@ -206,31 +198,22 @@ function MainScreen(): React.ReactElement {
                 `"${log.id}",${log.timestamp},"${new Date(log.timestamp).toISOString()}","${log.presetLabel}",${log.amountMl}`
             )
             .join('\n');
-          const csvContent = EXPORT_CSV_HEADERS + rows;
-          const blob = new Blob([csvContent], { type: EXPORT_MIME_TYPE.CSV });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${EXPORT_FILE_NAME_PREFIX.CSV}${Date.now()}.csv`;
-          link.click();
-          setExportStatusMessage('Exported hydration logs as CSV successfully!');
+          exportContent = EXPORT_CSV_HEADERS + rows;
           break;
         }
         case EXPORT_FORMAT.JSON: {
-          const jsonContent = JSON.stringify(
+          exportContent = JSON.stringify(
             { waterLogs, streak, exportDate: new Date().toISOString() },
             null,
             APP_CONSTANTS.JSON_INDENT_SPACES
           );
-          const blob = new Blob([jsonContent], { type: EXPORT_MIME_TYPE.JSON });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${EXPORT_FILE_NAME_PREFIX.JSON}${Date.now()}.json`;
-          link.click();
-          setExportStatusMessage('Exported full desk data as JSON successfully!');
           break;
         }
+      }
+
+      const isSuccess = await ExportService.exportData(exportContent, format);
+      if (isSuccess) {
+        setExportStatusMessage(`Exported ${format.toUpperCase()} data successfully!`);
       }
     } catch {
       setExportStatusMessage(`Exported ${format.toUpperCase()} data!`);
