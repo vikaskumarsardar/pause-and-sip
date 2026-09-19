@@ -11,6 +11,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B0F17"
     },
+    "plugins": [
+      "react-native-purchases",
+      [
+        "@onesignal/onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.pauseandsip.app"
