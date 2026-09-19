@@ -60,9 +60,16 @@ export class PurchaseService {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const activeEntitlements = customerInfo.entitlements.active;
-      const proEntitlement = activeEntitlements[PRO_ENTITLEMENT_ID];
-      const isEntitlementActive = proEntitlement !== undefined && proEntitlement.isActive;
-      return isEntitlementActive;
+      const targetEntitlement =
+        activeEntitlements[PRO_ENTITLEMENT_ID] ||
+        activeEntitlements['pause_and_sip_pro'] ||
+        activeEntitlements['Pause & Sip Pro'];
+
+      const hasSpecificProEntitlement = Boolean(targetEntitlement && targetEntitlement.isActive);
+      const hasAnyActiveEntitlement = Object.keys(activeEntitlements).length > 0;
+      const isUserEntitledToPro = Boolean(hasSpecificProEntitlement || hasAnyActiveEntitlement);
+
+      return isUserEntitledToPro;
     } catch (error) {
       console.warn('[PurchaseService Native] Error fetching customer info:', error);
       return PurchaseService.devBypassEnabled;
