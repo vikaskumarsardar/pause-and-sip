@@ -294,7 +294,11 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   };
 
   const selectPreset = async (preset: BreathPattern): Promise<void> => {
-    if (preset.isPro && !isPro) {
+    const isProPreset = preset.isPro;
+    const isUserNotPro = !isPro;
+    const isLockedProPreset = Boolean(isProPreset && isUserNotPro);
+
+    if (isLockedProPreset) {
       await HapticService.warning();
       if (onOpenPaywall) onOpenPaywall();
       return;
@@ -308,7 +312,10 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   };
 
   const toggleSoundscape = async (type: SoundscapeType, isProSoundscape?: boolean): Promise<void> => {
-    if (isProSoundscape && !isPro) {
+    const isUserNotPro = !isPro;
+    const isLockedProSoundscape = Boolean(isProSoundscape && isUserNotPro);
+
+    if (isLockedProSoundscape) {
       await HapticService.warning();
       if (onOpenPaywall) onOpenPaywall();
       return;

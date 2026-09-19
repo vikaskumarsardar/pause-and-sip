@@ -262,6 +262,39 @@ export interface SoundscapeItem {
   isPro?: boolean;
 }
 
+export type AppThemeId = 'deepSlate' | 'oledBlack' | 'midnightViolet' | 'emeraldForest';
+
+export interface ThemeOption {
+  id: AppThemeId;
+  name: string;
+  background: string;
+  surface: string;
+  border: string;
+  accent: string;
+  isPro?: boolean;
+}
+
+export const APP_THEMES: ThemeOption[] = [
+  { id: 'deepSlate', name: 'Deep Slate', background: '#0B0F17', surface: '#161F2E', border: '#233044', accent: '#38BDF8', isPro: false },
+  { id: 'oledBlack', name: 'OLED Black', background: '#000000', surface: '#0E121B', border: '#1A2332', accent: '#38BDF8', isPro: true },
+  { id: 'midnightViolet', name: 'Midnight Violet', background: '#0F0B1E', surface: '#1C1635', border: '#2D2350', accent: '#818CF8', isPro: true },
+  { id: 'emeraldForest', name: 'Emerald Forest', background: '#071510', surface: '#12241C', border: '#1D3B2E', accent: '#10B981', isPro: true },
+];
+
+export interface BreakIntervalOption {
+  minutes: number;
+  label: string;
+  isPro?: boolean;
+}
+
+export const BREAK_INTERVAL_OPTIONS: BreakIntervalOption[] = [
+  { minutes: 15, label: '15m Express', isPro: true },
+  { minutes: 30, label: '30m Focus', isPro: true },
+  { minutes: 45, label: '45m Standard', isPro: false },
+  { minutes: 60, label: '60m Deep Work', isPro: true },
+  { minutes: 90, label: '90m Cycle', isPro: true },
+];
+
 export const SOUNDSCAPE_LIST: SoundscapeItem[] = [
   { id: SOUNDSCAPES.WATERFALL, name: 'Waterfall', category: 'water', isPro: false },
   { id: SOUNDSCAPES.RAIN, name: 'Rainfall', category: 'water', isPro: false },

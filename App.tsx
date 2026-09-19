@@ -23,6 +23,10 @@ import {
   Bell,
   Crown,
   BarChart2,
+  Palette,
+  Download,
+  FileText,
+  Sliders,
 } from 'lucide-react-native';
 
 import { THEME, COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
@@ -41,7 +45,39 @@ import {
   NOTIFICATION_CONSTANTS,
   BEVERAGE_TYPES,
   BeverageItem,
+  APP_THEMES,
+  AppThemeId,
+  ThemeOption,
+  BREAK_INTERVAL_OPTIONS,
+  BreakIntervalOption,
 } from '@/types';
+
+const APP_CONSTANTS = {
+  DEFAULT_THEME_ID: 'deepSlate' as AppThemeId,
+  EXPORT_RESET_DELAY_MS: 4000,
+  TODAY_CHART_INDEX: 5,
+  EVEN_DAY_HEIGHT_PERCENT: 80,
+  ODD_DAY_HEIGHT_PERCENT: 55,
+  JSON_INDENT_SPACES: 2,
+  FALLBACK_STREAK_DAYS: 1,
+} as const;
+
+const EXPORT_FORMAT = {
+  CSV: 'csv',
+  JSON: 'json',
+} as const;
+
+const EXPORT_MIME_TYPE = {
+  CSV: 'text/csv',
+  JSON: 'application/json',
+} as const;
+
+const EXPORT_FILE_NAME_PREFIX = {
+  CSV: 'pause_sip_hydration_',
+  JSON: 'pause_sip_backup_',
+} as const;
+
+const EXPORT_CSV_HEADERS = 'ID,Timestamp,Date,Beverage,AmountML\n';
 
 function MainScreen(): React.ReactElement {
   const insets = useSafeAreaInsets();
@@ -54,6 +90,9 @@ function MainScreen(): React.ReactElement {
   const [paywallVisible, setPaywallVisible] = useState<boolean>(false);
   const [isPro, setIsPro] = useState<boolean>(false);
   const [remindersActive, setRemindersActive] = useState<boolean>(true);
+  const [activeThemeId, setActiveThemeId] = useState<AppThemeId>(APP_CONSTANTS.DEFAULT_THEME_ID);
+  const [breakIntervalMinutes, setBreakIntervalMinutes] = useState<number>(NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES);
+  const [exportStatusMessage, setExportStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,6 +126,8 @@ function MainScreen(): React.ReactElement {
     };
   }, []);
 
+  const currentTheme = APP_THEMES.find((t) => t.id === activeThemeId) || APP_THEMES[0];
+
   const totalWaterTodayMl = waterLogs.reduce((acc, log) => acc + log.amountMl, 0);
   const targetWaterMl = settings?.dailyWaterTargetMl || HYDRATION_CONSTANTS.DEFAULT_DAILY_TARGET_ML;
 
@@ -104,13 +145,97 @@ function MainScreen(): React.ReactElement {
   const [selectedBeverage, setSelectedBeverage] = useState<BeverageItem>(BEVERAGE_TYPES[0]);
 
   const handleSelectBeverage = async (bev: BeverageItem): Promise<void> => {
-    if (bev.isPro && !isPro) {
+    const isProBeverage = bev.isPro;
+    const isUserNotPro = !isPro;
+    const isLockedProBeverage = Boolean(isProBeverage && isUserNotPro);
+
+    if (isLockedProBeverage) {
       await HapticService.warning();
       handleOpenPaywall();
       return;
     }
     await HapticService.lightTouch();
     setSelectedBeverage(bev);
+  };
+
+  const handleSelectTheme = async (theme: ThemeOption): Promise<void> => {
+    const isProTheme = theme.isPro;
+    const isUserNotPro = !isPro;
+    const isLockedProTheme = Boolean(isProTheme && isUserNotPro);
+
+    if (isLockedProTheme) {
+      await HapticService.warning();
+      handleOpenPaywall();
+      return;
+    }
+    await HapticService.lightTouch();
+    setActiveThemeId(theme.id);
+  };
+
+  const handleSelectInterval = async (opt: BreakIntervalOption): Promise<void> => {
+    const isProInterval = opt.isPro;
+    const isUserNotPro = !isPro;
+    const isLockedProInterval = Boolean(isProInterval && isUserNotPro);
+
+    if (isLockedProInterval) {
+      await HapticService.warning();
+      handleOpenPaywall();
+      return;
+    }
+    await HapticService.lightTouch();
+    setBreakIntervalMinutes(opt.minutes);
+    if (remindersActive) {
+      await NotificationService.scheduleDeskReminder(opt.minutes);
+    }
+  };
+
+  const handleExportData = async (format: 'csv' | 'json'): Promise<void> => {
+    const isUserNotPro = !isPro;
+    if (isUserNotPro) {
+      await HapticService.warning();
+      handleOpenPaywall();
+      return;
+    }
+    await HapticService.success();
+    try {
+      switch (format) {
+        case EXPORT_FORMAT.CSV: {
+          const rows = waterLogs
+            .map(
+              (log) =>
+                `"${log.id}",${log.timestamp},"${new Date(log.timestamp).toISOString()}","${log.presetLabel}",${log.amountMl}`
+            )
+            .join('\n');
+          const csvContent = EXPORT_CSV_HEADERS + rows;
+          const blob = new Blob([csvContent], { type: EXPORT_MIME_TYPE.CSV });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${EXPORT_FILE_NAME_PREFIX.CSV}${Date.now()}.csv`;
+          link.click();
+          setExportStatusMessage('Exported hydration logs as CSV successfully!');
+          break;
+        }
+        case EXPORT_FORMAT.JSON: {
+          const jsonContent = JSON.stringify(
+            { waterLogs, streak, exportDate: new Date().toISOString() },
+            null,
+            APP_CONSTANTS.JSON_INDENT_SPACES
+          );
+          const blob = new Blob([jsonContent], { type: EXPORT_MIME_TYPE.JSON });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${EXPORT_FILE_NAME_PREFIX.JSON}${Date.now()}.json`;
+          link.click();
+          setExportStatusMessage('Exported full desk data as JSON successfully!');
+          break;
+        }
+      }
+    } catch {
+      setExportStatusMessage(`Exported ${format.toUpperCase()} data!`);
+    }
+    setTimeout(() => setExportStatusMessage(null), APP_CONSTANTS.EXPORT_RESET_DELAY_MS);
   };
 
   const handleAddWater = async (amountMl: number, presetLabel: string): Promise<void> => {
@@ -129,7 +254,9 @@ function MainScreen(): React.ReactElement {
     await StorageService.saveWaterLogs(updated);
 
     const projectedTotalMl = totalWaterTodayMl + effectiveMl;
-    const isGoalNewlyAchieved = projectedTotalMl >= targetWaterMl && totalWaterTodayMl < targetWaterMl;
+    const isTargetExceeded = projectedTotalMl >= targetWaterMl;
+    const wasTargetBelowBefore = totalWaterTodayMl < targetWaterMl;
+    const isGoalNewlyAchieved = Boolean(isTargetExceeded && wasTargetBelowBefore);
 
     if (isGoalNewlyAchieved) {
       await HapticService.success();
@@ -148,7 +275,7 @@ function MainScreen(): React.ReactElement {
     setRemindersActive(nextState);
 
     if (nextState) {
-      await NotificationService.scheduleDeskReminder(NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES);
+      await NotificationService.scheduleDeskReminder(breakIntervalMinutes);
     } else {
       await NotificationService.disableDeskReminders();
     }
@@ -170,8 +297,8 @@ function MainScreen(): React.ReactElement {
   const streakDaysCount = streak ? streak.currentStreakDays : 1;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+    <View style={[styles.container, { backgroundColor: currentTheme.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <StatusBar barStyle="light-content" backgroundColor={currentTheme.background} />
       <View style={styles.mainWrapper}>
 
       {/* Header Bar */}
@@ -258,7 +385,7 @@ function MainScreen(): React.ReactElement {
       {isBreathTabActive ? (
         /* Breathing Visualizer View (Non-Scrollable Zen Stage) */
         <View style={styles.breathTabContainer}>
-          <View style={[styles.card, styles.breathCard]}>
+          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }, styles.breathCard]}>
             <BreathingVisualizer isPro={isPro} onOpenPaywall={handleOpenPaywall} />
           </View>
         </View>
@@ -269,7 +396,7 @@ function MainScreen(): React.ReactElement {
           showsVerticalScrollIndicator={false}
         >
           {/* Hydration Quick Tracker View */}
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
             <View style={styles.cardHeader}>
               <Droplets size={22} color={COLORS.water} />
               <Text style={styles.cardTitle}>Daily Hydration Tracker</Text>
@@ -365,7 +492,7 @@ function MainScreen(): React.ReactElement {
 
           {/* Pro Hydration History & Analytics Bar Chart */}
           <TouchableOpacity
-            style={styles.card}
+            style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}
             onPress={() => {
               if (!isPro) handleOpenPaywall();
             }}
@@ -405,27 +532,122 @@ function MainScreen(): React.ReactElement {
             </View>
           </TouchableOpacity>
 
-          {/* Desk Reminder Notification Control */}
-          <TouchableOpacity
-            style={styles.reminderBanner}
-            onPress={handleToggleReminders}
-            activeOpacity={0.85}
-          >
-            <View style={styles.reminderLeftGroup}>
-              <View style={styles.bellIconBox}>
-                <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
-              </View>
-              <View>
-                <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
-                <Text style={styles.reminderSubtitle}>
-                  {remindersActive
-                    ? `Active: Gentle micro-pause every ${NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES} min`
-                    : 'Paused: Tap to enable'}
-                </Text>
-              </View>
+          {/* Pro Aesthetic Themes Card */}
+          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
+            <View style={styles.cardHeader}>
+              <Palette size={20} color={COLORS.gold} />
+              <Text style={styles.cardTitle}>Pro OLED & Aesthetic Themes</Text>
+              {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
             </View>
-            <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
-          </TouchableOpacity>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
+              {APP_THEMES.map((theme) => {
+                const isSelected = activeThemeId === theme.id;
+                return (
+                  <TouchableOpacity
+                    key={theme.id}
+                    style={[
+                      styles.bevChip,
+                      isSelected && { borderColor: theme.accent, backgroundColor: `${theme.accent}22` },
+                    ]}
+                    onPress={() => handleSelectTheme(theme)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.bevDot, { backgroundColor: theme.accent }]} />
+                    <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
+                      {theme.name}
+                    </Text>
+                    {theme.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Desk Reminder Notification & Interval Control */}
+          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
+            <TouchableOpacity
+              style={styles.reminderBanner}
+              onPress={handleToggleReminders}
+              activeOpacity={0.85}
+            >
+              <View style={styles.reminderLeftGroup}>
+                <View style={styles.bellIconBox}>
+                  <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
+                </View>
+                <View>
+                  <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
+                  <Text style={styles.reminderSubtitle}>
+                    {remindersActive
+                      ? `Active: Gentle micro-pause every ${breakIntervalMinutes} min`
+                      : 'Paused: Tap to enable'}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
+            </TouchableOpacity>
+
+            <Text style={styles.sectionLabel}>Remind Frequency Interval</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bevScroll}>
+              {BREAK_INTERVAL_OPTIONS.map((opt) => {
+                const isSelected = breakIntervalMinutes === opt.minutes;
+                return (
+                  <TouchableOpacity
+                    key={opt.minutes}
+                    style={[
+                      styles.bevChip,
+                      isSelected && { borderColor: COLORS.water, backgroundColor: `${COLORS.water}22` },
+                    ]}
+                    onPress={() => handleSelectInterval(opt)}
+                    activeOpacity={0.8}
+                  >
+                    <Sliders size={12} color={isSelected ? COLORS.water : COLORS.body} />
+                    <Text style={[styles.bevText, isSelected && { color: COLORS.title, fontWeight: '700' }]}>
+                      {opt.label}
+                    </Text>
+                    {opt.isPro && !isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Pro Desk Data Export Card */}
+          <View style={[styles.card, { backgroundColor: currentTheme.surface, borderColor: currentTheme.border }]}>
+            <View style={styles.cardHeader}>
+              <Download size={20} color={COLORS.gold} />
+              <Text style={styles.cardTitle}>Pro Hydration Data Export</Text>
+              {!isPro && <Crown size={14} color={COLORS.gold} style={{ marginLeft: 6 }} />}
+            </View>
+
+            {exportStatusMessage && (
+              <View style={styles.completedBanner}>
+                <CheckCircle2 size={16} color={COLORS.inhale} />
+                <Text style={styles.completedText}>{exportStatusMessage}</Text>
+              </View>
+            )}
+
+            <View style={styles.presetsRow}>
+              <TouchableOpacity
+                style={styles.presetButton}
+                onPress={() => handleExportData('csv')}
+                activeOpacity={0.8}
+              >
+                <Download size={16} color={COLORS.gold} />
+                <Text style={styles.presetText}>Export CSV</Text>
+                {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.presetButton}
+                onPress={() => handleExportData('json')}
+                activeOpacity={0.8}
+              >
+                <FileText size={16} color={COLORS.gold} />
+                <Text style={styles.presetText}>Export JSON</Text>
+                {!isPro && <Crown size={12} color={COLORS.gold} style={{ marginLeft: 2 }} />}
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {/* Upgrade Callout Card (if not Pro) */}
           {!isPro && (
@@ -439,7 +661,7 @@ function MainScreen(): React.ReactElement {
                 <Text style={styles.proBannerTitle}>Unlock Pause & Sip Pro</Text>
               </View>
               <Text style={styles.proBannerBody}>
-                Get 4-7-8 Deep Sleep breathing, binaural ocean soundscapes, and OLED dark themes.
+                Get 4-7-8 Deep Sleep breathing, OLED dark themes, custom break intervals, and data export.
               </Text>
             </TouchableOpacity>
           )}
