@@ -6,21 +6,30 @@
 [![Expo SDK 51](https://img.shields.io/badge/Expo-SDK_51-000000?style=for-the-badge&logo=expo)](https://expo.dev)
 [![React Native 0.74.5](https://img.shields.io/badge/React_Native-0.74.5-61DAFB?style=for-the-badge&logo=react)](https://reactnative.dev)
 [![TypeScript Strict](https://img.shields.io/badge/TypeScript-Strict_Zero_Any-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
+[![Expo Doctor](https://img.shields.io/badge/Expo_Doctor-17%2F17_Passing-10B981?style=for-the-badge)](https://expo.dev)
 [![License MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-**Pause & Sip** is a premium, offline-first desk companion mobile and web application designed to combat workplace burnout, cognitive fatigue, and dehydration. Built with a **Deep Slate Calm** neumorphic aesthetic, it combines a **60fps Reanimated 3** box breathing engine, offline hydration tracking, RevenueCat Pro monetization, and OneSignal push reminders.
+**Pause & Sip** is a premium, offline-first desk companion mobile and web application designed to combat workplace burnout, cognitive fatigue, and dehydration. Built with a **Deep Slate Calm** neumorphic aesthetic, it combines a **60fps Reanimated 3** box breathing engine, multi-beverage hydration logging, RevenueCat Pro monetization, OneSignal push reminders, OLED theme customization, and cross-platform CSV/JSON data exports.
 
 ---
 
-## 🎨 Design System: Deep Slate Calm
+## 🎨 Design System & OLED Aesthetic Themes
 
-Derived from `ui-ux-pro-max` design rules for React Native:
+Derived from `ui-ux-pro-max` design rules for React Native with dynamic theme support:
 
-### Color Palette Tokens
+### 1. Aesthetic Theme Presets 🎨
+| Theme Name | Theme ID | Background | Surface | Accent | Gating |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Deep Slate** | `deepSlate` | `#0B0F17` | `#161F2E` | `#38BDF8` | **Free Default** |
+| **OLED True Black** | `oledBlack` | `#000000` | `#0E121B` | `#38BDF8` | **Pro 👑** |
+| **Midnight Violet** | `midnightViolet` | `#0F0B1E` | `#1C1635` | `#818CF8` | **Pro 👑** |
+| **Emerald Forest** | `emeraldForest` | `#071510` | `#12241C` | `#10B981` | **Pro 👑** |
+
+### 2. Core Color Palette Tokens
 | Token Name | Hex Code | Purpose & Usage |
 | :--- | :--- | :--- |
 | **Base Background** | `#0B0F17` | Deep slate backdrop across all screens |
-| **Surface (Card/Sheet)** | `#161F2E` | Elevated container cards with 1px border `#233044` |
+| **Surface (Card/Sheet)** | `#161F2E` | Container cards with 1px border `#233044` |
 | **Surface Elevated** | `#1E2B3E` | Highlighted active container states |
 | **Border Color** | `#233044` | 1px clean card and divider lines |
 | **Water Accent** | `#38BDF8` | Fluid sky blue for hydration progress bars and badges |
@@ -32,7 +41,7 @@ Derived from `ui-ux-pro-max` design rules for React Native:
 | **Body Text** | `#8B949E` | Secondary body text |
 | **Muted Text** | `#484F58` | Subdued metadata and captions |
 
-### Hardware & Touch Rules
+### 3. Hardware & Touch Rules
 - **Minimum Touch Target**: Strictly enforced `48x48dp` across all buttons, tab items, and interactive controls.
 - **Safe Area Insets**: Full layout padding protection using `react-native-safe-area-context`.
 - **Iconography**: Clean vector icons exclusively from `lucide-react-native`.
@@ -42,38 +51,40 @@ Derived from `ui-ux-pro-max` design rules for React Native:
 ## ⚡ Technical Architecture & Core Modules
 
 ### 1. 60fps Reanimated 3 Breathing Engine (`src/components/BreathingVisualizer.tsx`)
-- **UI Thread Animations**: Uses `react-native-reanimated` (v3+) shared values (`scale`, `ringOpacity`, `auraPulse`) driven on the UI thread for zero-jank 60fps performance.
-- **4-4-4-4 Box Breathing Cycle**:
-  - **Inhale** (4s): Smooth sine wave expansion from `0.45x` to `1.0x` with Emerald (`#10B981`) aura.
-  - **Hold In** (4s): Soft Amber (`#F59E0B`) pulsing aura with static countdown timer text.
-  - **Exhale** (4s): Orb contracts smoothly to `0.45x` with Periwinkle (`#818CF8`) aura.
-  - **Rest / Hold Out** (4s): Slate (`#64748B`) resting aura.
-- **Phase Crossfade & Clean Timer**: Smooth 400ms phase action text crossfading (`key={phase}`), with a clean static countdown display (`4s`, `3s`, `2s`, `1s`) eliminating per-second text shaking.
-- **Tactile Haptic Engine**: Invokes `HapticService` with native platform checks (`isHapticsSupported`), preventing `UnavailabilityError` warnings on web.
-- **SVG Radial Glow**: Uses `react-native-svg` (`RadialGradient`, `Defs`, `Circle`) to project 360-degree ambient lighting behind the orb.
+- **UI Thread Animations**: Uses `react-native-reanimated` (v3+) shared values (`scale`, `ringOpacity`, `rotation`) driven on the UI thread for zero-jank 60fps performance.
+- **Breathing Rhythms & Pro Gating**:
+  - **Free**: Box 4-4-4-4, Sigh 2-1-6, 2-0-2 Energy.
+  - **Pro 👑**: 4-7-8 Relax, 7-11 Anti-Anxiety, 5-5 Coherence.
+- **Custom Breathing Rhythm CRUD Modal**: Allows Pro users to create and save custom inhale/hold/exhale timing presets.
+- **Multi-Soundscapes & Audio FX**:
+  - Free soundscapes: Waterfall, Rainfall, Ocean Surf.
+  - Pro soundscapes 👑: Cozy Fire, Forest Wind, 528Hz Solfeggio Miracle, 432Hz Alpha Waves.
+  - Custom Audio FX upload modal (`+ Audio FX`) 👑.
+- **Phase Crossfade & Clean Timer**: Smooth 400ms phase action text crossfading, with static countdown displays (`4s`, `3s`, `2s`, `1s`) eliminating text shaking.
 
-### 2. RevenueCat Monetization & Paywall (`src/services/purchases.ts` & `src/components/PaywallModal.tsx`)
-- **RevenueCat SDK Bridge**: Wrapped in `PurchaseService` with platform-safe dynamic module loading for seamless web, simulator, iOS, and Android execution.
-- **Entitlement Check**: Queries customer info for active `'pro_access'` entitlement.
-- **Offerings & Packages**: Fetches Monthly (`$1.99/mo`) and Lifetime (`$9.99` one-time) offerings formatted for UI presentation.
-- **Polished Paywall Bottom Sheet**:
-  - Pro features list (Advanced Breath Pacing, Ambient Focus Soundscapes, OLED Dark Themes).
-  - Plan selector cards with gold `#FBBF24` **`BEST VALUE`** badge.
-  - `Start 7-Day Free Trial` / `Unlock Lifetime Access` CTA button.
-  - `Restore Purchases` and `Terms & Privacy` actions.
-  - **Dev Sandbox Toggle**: Built-in developer bypass switch enabling instant Pro unlock during testing.
+### 2. Hydration Pro & Multi-Beverage Tracking (`App.tsx` & `src/types/index.ts`)
+- **Beverage Types & Efficiency Factors**:
+  - **Pure Water** (`1.0x` hydration factor) — Free.
+  - **Herbal Tea** (`0.9x` hydration factor) — Pro 👑.
+  - **Electrolytes** (`1.15x` hydration factor) — Pro 👑.
+  - **Desk Coffee** (`0.7x` hydration factor) — Pro 👑.
+- **7-Day Desk Hydration History Chart**: Interactive 7-day column bar chart tracking daily hydration progress (Pro interactive prompt 👑).
 
-### 3. OneSignal Push Engagement (`src/services/notifications.ts`)
-- **Notification Manager**: Platform-safe wrapper for `react-native-onesignal`.
-- **Automated Break Scheduling**: Configures recurring 45-minute desk micro-break reminders (`desk_reminder_interval`) prompting users to pause, breathe, and hydrate.
+### 3. RevenueCat Monetization & Paywall (`src/services/purchases.ts` & `src/components/PaywallModal.tsx`)
+- **Platform-Safe Bridges**: Platform-specific extensions (`purchases.web.ts` and `purchases.native.ts`) preventing native `TurboModuleRegistry` crashes on web.
+- **Entitlement Tracking**: Queries customer info for active `'pro_access'` entitlement.
+- **Offerings**: Monthly (`$1.99/mo` with 7-day trial) and Lifetime (`$9.99` one-time) packages.
+- **Paywall Sheet**: Bottom-sheet paywall with feature cards, gold `#FBBF24` **`BEST VALUE`** badge, and **Dev Sandbox Toggle** for instant developer testing.
 
-### 4. Offline-First Storage Layer (`src/services/storage.ts`)
-- Strongly typed AsyncStore wrapper using `@react-native-async-storage/async-storage`.
-- Persists water intake logs, streak days, daily target preferences, and desk break schedules locally.
+### 4. OneSignal Push Reminders & Custom Intervals (`src/services/notifications.ts`)
+- **Notification Manager**: Platform-safe wrapper for `react-native-onesignal` (`notifications.web.ts` and `notifications.native.ts`).
+- **Frequency Interval Selector**:
+  - `15m Express` 👑, `30m Focus` 👑, `45m Standard` (Free), `60m Deep Work` 👑, `90m Cycle` 👑.
 
-### 5. Haptic & Audio Controllers (`src/services/haptics.ts` & `src/services/audio.ts`)
-- Platform-guarded tactile feedback wrapper supporting light, medium, heavy impact, selection ticks, and notification feedback.
-- Audio manager wrapping `expo-av` for ambient desk focus soundscapes.
+### 5. Cross-Platform Data Export (`src/services/export.ts`)
+- **Web Platform**: Generates Blob links and triggers browser file download.
+- **Native Android / iOS**: Saves file to `FileSystem.documentDirectory` and launches native Share & Save dialog via `expo-sharing` (`Sharing.shareAsync`).
+- Supports **CSV Data Export** and **JSON Full Backup** 👑.
 
 ---
 
@@ -81,15 +92,16 @@ Derived from `ui-ux-pro-max` design rules for React Native:
 
 ```
 pause-and-sleep/
-├── App.tsx                        # Root layout, Safe Area Provider, tab switcher & Paywall Modal
+├── App.tsx                        # Root layout, theme engine, hydration tracking & Paywall Modal
 ├── app.json                       # Expo SDK 51 app manifest
-├── package.json                   # Dependencies & scripts
-├── tsconfig.json                  # Strict TypeScript configuration (zero any)
+├── eas.json                       # EAS Build config (preview APK & production AAB profiles)
+├── package.json                   # Dependencies & build scripts
+├── tsconfig.json                  # Strict TypeScript configuration (~5.3.3)
 ├── babel.config.js                # Babel preset + module-resolver + Reanimated plugin
-├── assets/                        # App icons, splash screen, and favicon fallback PNGs
+├── assets/                        # App icons, splash screen, and store PNG assets
 └── src/
     ├── components/
-    │   ├── BreathingVisualizer.tsx # 60fps Reanimated 3 box breathing component
+    │   ├── BreathingVisualizer.tsx # 60fps Reanimated 3 box breathing & soundscape component
     │   └── PaywallModal.tsx        # RevenueCat bottom sheet paywall modal
     ├── theme/
     │   ├── colors.ts               # Deep Slate Calm color tokens
@@ -97,17 +109,18 @@ pause-and-sleep/
     │   ├── typography.ts           # Text hierarchy styles
     │   └── index.ts                # Unified theme engine export
     ├── types/
-    │   ├── index.ts                # Unified domain types export
+    │   ├── index.ts                # Domain types (Beverages, Themes, Intervals, Soundscapes)
     │   ├── water.ts                # WaterLog, daily target & unit types
     │   ├── breath.ts               # BreathPhase, BreathPattern & session log types
     │   ├── user.ts                 # UserStreak & DeskSettings types
     │   └── paywall.ts              # RevenueCat entitlement & offering types
     └── services/
         ├── storage.ts              # AsyncStore typed local persistence
-        ├── haptics.ts              # Expo-haptics tactile feedback service (web guarded)
-        ├── audio.ts                # Expo-av soundscape audio manager
-        ├── purchases.ts            # RevenueCat purchase & entitlement service
-        └── notifications.ts        # OneSignal push notification manager
+        ├── haptics.ts              # Expo-haptics tactile feedback service
+        ├── audio.ts                # Platform-safe audio manager (web / native)
+        ├── purchases.ts            # Platform-safe RevenueCat purchase service
+        ├── notifications.ts        # Platform-safe OneSignal push reminder service
+        └── export.ts               # Cross-platform CSV/JSON export service (FileSystem & Sharing)
 ```
 
 ---
@@ -116,9 +129,9 @@ pause-and-sleep/
 
 | Hackathon Track | Alignment & Implementation |
 | :--- | :--- |
-| **RevenueCat Design Award** | Neumorphic Deep Slate Calm dark mode UI, smooth 60fps Reanimated 3 orb scale animations, custom gold paywall bottom sheet modal with offering cards. |
-| **Idea to Income (Replit Track)** | Complete offline-first execution, instant dev sandbox bypass toggle, standalone local persistence, and web preview compatibility. |
-| **OneSignal Push Track** | Integrated OneSignal SDK manager handling scheduled micro-break push notification tags. |
+| **RevenueCat Design Award** | Neumorphic Deep Slate Calm & OLED dark mode UI, smooth 60fps Reanimated 3 orb scale animations, custom gold paywall bottom sheet modal with offering cards. |
+| **Idea to Income (Replit Track)** | Complete offline-first execution, instant dev sandbox bypass toggle, standalone local persistence, cross-platform export, and web preview compatibility. |
+| **OneSignal Push Track** | Integrated OneSignal SDK manager handling scheduled micro-break push notification tags and custom frequency interval selection. |
 
 ---
 
@@ -135,7 +148,7 @@ git clone https://github.com/vikaskumarsardar/pause-and-sip.git
 cd pause-and-sip
 
 # Install dependencies
-npm install --legacy-peer-deps
+npm install
 ```
 
 ### Running Locally
@@ -147,7 +160,19 @@ npx expo start --web --port 8081
 npx expo start --android
 
 # Run TypeScript compilation check
-npx tsc --noEmit
+npm run check-types
+
+# Run Expo Doctor check
+npx expo-doctor
+```
+
+### Building APK / AAB
+```bash
+# Build Android Preview APK
+npm run build:apk
+
+# Build Android Production AAB
+npm run build:aab
 ```
 
 ---
