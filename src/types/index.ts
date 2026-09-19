@@ -37,8 +37,8 @@ export const PACKAGE_ID = {
 } as const;
 
 export const REVENUECAT_KEYS = {
-  APPLE: process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'appl_demo_key_pause_sip_shipathon',
-  GOOGLE: process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'goog_demo_key_pause_sip_shipathon',
+  APPLE: process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY || 'test_ERWYxGbypVORuRoVAETjpgBdzwr',
+  GOOGLE: process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY || 'test_ERWYxGbypVORuRoVAETjpgBdzwr',
   PRO_ENTITLEMENT_ID: process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID || 'pro_access',
 } as const;
 
