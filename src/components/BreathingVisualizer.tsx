@@ -74,7 +74,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   // Reanimated 3 Shared Values
   const scale = useSharedValue<number>(BREATHING_CONSTANTS.ORB_MIN_SCALE);
   const ringOpacity = useSharedValue<number>(BREATHING_CONSTANTS.OPACITY_LOW);
-  const auraRotation = useSharedValue<number>(0);
+  const auraPulse = useSharedValue<number>(1.0);
 
   const phaseRef = useRef<BreathPhase>(BREATH_PHASE.INHALE);
   phaseRef.current = phase;
@@ -107,35 +107,55 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       const durationMs = durationSeconds * LAYOUT_DIMENSIONS.MS_PER_SECOND;
       setSecondsRemaining(durationSeconds);
 
-      // Animate scale & opacity on UI thread with switch case
+      // Smooth Organic Motion Curves per Phase
       switch (nextPhase) {
         case BREATH_PHASE.INHALE:
+          // Smooth expanding curve (Lungs Filling)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
             duration: durationMs,
-            easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
           });
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MID, { duration: durationMs });
           break;
 
         case BREATH_PHASE.HOLD_IN:
-          const halfDurationMs = durationMs / 2;
+          // Organic 2-beat full lungs pulse (Vitality Glow)
+          const halfMs = durationMs / 2;
           scale.value = withSequence(
-            withTiming(BREATHING_CONSTANTS.ORB_PULSE_SCALE, { duration: halfDurationMs }),
-            withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, { duration: halfDurationMs })
+            withTiming(BREATHING_CONSTANTS.ORB_PULSE_SCALE, {
+              duration: halfMs,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
+              duration: halfMs,
+              easing: Easing.inOut(Easing.ease),
+            })
           );
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_FULL, { duration: durationMs });
           break;
 
         case BREATH_PHASE.EXHALE:
+          // Relaxing contracting curve (Lungs Emptying)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
             duration: durationMs,
-            easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
           });
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_LOW, { duration: durationMs });
           break;
 
         case BREATH_PHASE.HOLD_OUT:
-          scale.value = withTiming(BREATHING_CONSTANTS.ORB_REST_SCALE, { duration: durationMs });
+          // Subtle gentle resting breath pulse (Calm Stillness)
+          const halfRestMs = durationMs / 2;
+          scale.value = withSequence(
+            withTiming(BREATHING_CONSTANTS.ORB_REST_SCALE, {
+              duration: halfRestMs,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
+              duration: halfRestMs,
+              easing: Easing.inOut(Easing.ease),
+            })
+          );
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MIN, { duration: durationMs });
           break;
       }
@@ -185,17 +205,17 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return () => clearInterval(timer);
   }, [isActive, handlePhaseTransition, onCycleComplete]);
 
-  // Background aura rotation animation
+  // Subtle ambient radial aura pulse (Symmetrical, no wobble)
   useEffect(() => {
-    auraRotation.value = withRepeat(
-      withTiming(360, {
-        duration: BREATHING_CONSTANTS.AURA_ROTATION_MS,
-        easing: Easing.linear,
-      }),
+    auraPulse.value = withRepeat(
+      withSequence(
+        withTiming(1.12, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1.0, { duration: 3000, easing: Easing.inOut(Easing.ease) })
+      ),
       -1,
-      false
+      true
     );
-  }, [auraRotation]);
+  }, [auraPulse]);
 
   const toggleSession = async (): Promise<void> => {
     await triggerHapticFeedback();
@@ -231,10 +251,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   const auraAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: ringOpacity.value,
-      transform: [
-        { scale: scale.value * 1.35 },
-        { rotate: `${auraRotation.value}deg` },
-      ],
+      transform: [{ scale: scale.value * auraPulse.value * 1.25 }],
     };
   });
 
@@ -245,12 +262,13 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     <View style={styles.container}>
       {/* Visualizer Aura & Orb Stage */}
       <View style={[styles.visualizerStage, { width: CONTAINER_SIZE, height: CONTAINER_SIZE }]}>
+        {/* SVG Radial Glow Background */}
         <Animated.View style={[StyleSheet.absoluteFillObject, auraAnimatedStyle]}>
           <Svg height={CONTAINER_SIZE} width={CONTAINER_SIZE} viewBox={`0 0 ${CONTAINER_SIZE} ${CONTAINER_SIZE}`}>
             <Defs>
               <RadialGradient id="breathAura" cx="50%" cy="50%" r="50%">
-                <Stop offset="0%" stopColor={currentColor} stopOpacity="0.4" />
-                <Stop offset="60%" stopColor={currentColor} stopOpacity="0.1" />
+                <Stop offset="0%" stopColor={currentColor} stopOpacity="0.45" />
+                <Stop offset="65%" stopColor={currentColor} stopOpacity="0.12" />
                 <Stop offset="100%" stopColor={COLORS.background} stopOpacity="0" />
               </RadialGradient>
             </Defs>
