@@ -42,14 +42,15 @@ Derived from `ui-ux-pro-max` design rules for React Native:
 ## ⚡ Technical Architecture & Core Modules
 
 ### 1. 60fps Reanimated 3 Breathing Engine (`src/components/BreathingVisualizer.tsx`)
-- **UI Thread Animations**: Uses `react-native-reanimated` (v3+) shared values (`scale`, `ringOpacity`, `auraRotation`) driven on the UI thread for zero-jank 60fps performance.
+- **UI Thread Animations**: Uses `react-native-reanimated` (v3+) shared values (`scale`, `ringOpacity`, `auraPulse`) driven on the UI thread for zero-jank 60fps performance.
 - **4-4-4-4 Box Breathing Cycle**:
-  - **Inhale** (4s): Orb scales from `0.45x` to `1.0x` with Emerald (`#10B981`) aura.
-  - **Hold In** (4s): Soft Amber (`#F59E0B`) pulsing aura with countdown timer.
+  - **Inhale** (4s): Smooth sine wave expansion from `0.45x` to `1.0x` with Emerald (`#10B981`) aura.
+  - **Hold In** (4s): Soft Amber (`#F59E0B`) pulsing aura with static countdown timer text.
   - **Exhale** (4s): Orb contracts smoothly to `0.45x` with Periwinkle (`#818CF8`) aura.
   - **Rest / Hold Out** (4s): Slate (`#64748B`) resting aura.
-- **Tactile Haptic Feedback**: Invokes `expo-haptics` (`Light` impact) on every phase transition boundary using `runOnJS`.
-- **SVG Radial Glow**: Uses `react-native-svg` (`RadialGradient`, `Defs`, `Circle`) to project ambient lighting behind the orb.
+- **Phase Crossfade & Clean Timer**: Smooth 400ms phase action text crossfading (`key={phase}`), with a clean static countdown display (`4s`, `3s`, `2s`, `1s`) eliminating per-second text shaking.
+- **Tactile Haptic Engine**: Invokes `HapticService` with native platform checks (`isHapticsSupported`), preventing `UnavailabilityError` warnings on web.
+- **SVG Radial Glow**: Uses `react-native-svg` (`RadialGradient`, `Defs`, `Circle`) to project 360-degree ambient lighting behind the orb.
 
 ### 2. RevenueCat Monetization & Paywall (`src/services/purchases.ts` & `src/components/PaywallModal.tsx`)
 - **RevenueCat SDK Bridge**: Wrapped in `PurchaseService` with platform-safe dynamic module loading for seamless web, simulator, iOS, and Android execution.
@@ -71,7 +72,7 @@ Derived from `ui-ux-pro-max` design rules for React Native:
 - Persists water intake logs, streak days, daily target preferences, and desk break schedules locally.
 
 ### 5. Haptic & Audio Controllers (`src/services/haptics.ts` & `src/services/audio.ts`)
-- Tactile feedback wrapper supporting light, medium, heavy impact, selection ticks, and notification feedback.
+- Platform-guarded tactile feedback wrapper supporting light, medium, heavy impact, selection ticks, and notification feedback.
 - Audio manager wrapping `expo-av` for ambient desk focus soundscapes.
 
 ---
@@ -103,7 +104,7 @@ pause-and-sleep/
     │   └── paywall.ts              # RevenueCat entitlement & offering types
     └── services/
         ├── storage.ts              # AsyncStore typed local persistence
-        ├── haptics.ts              # Expo-haptics tactile feedback service
+        ├── haptics.ts              # Expo-haptics tactile feedback service (web guarded)
         ├── audio.ts                # Expo-av soundscape audio manager
         ├── purchases.ts            # RevenueCat purchase & entitlement service
         └── notifications.ts        # OneSignal push notification manager
@@ -146,7 +147,7 @@ npx expo start --web --port 8081
 npx expo start --android
 
 # Run TypeScript compilation check
-npm run tsc
+npx tsc --noEmit
 ```
 
 ---
