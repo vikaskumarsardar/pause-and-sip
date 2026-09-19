@@ -107,10 +107,9 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       const durationMs = durationSeconds * LAYOUT_DIMENSIONS.MS_PER_SECOND;
       setSecondsRemaining(durationSeconds);
 
-      // Ultra-soothing, silk-smooth sine motion curves
+      // Smooth, continuous sine motion curves
       switch (nextPhase) {
         case BREATH_PHASE.INHALE:
-          // Smooth continuous expansion (Lungs Filling)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
             duration: durationMs,
             easing: Easing.inOut(Easing.sin),
@@ -119,7 +118,6 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           break;
 
         case BREATH_PHASE.HOLD_IN:
-          // Rhythmic calm lungs pulse
           const halfMs = durationMs / 2;
           scale.value = withSequence(
             withTiming(BREATHING_CONSTANTS.ORB_PULSE_SCALE, {
@@ -135,7 +133,6 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           break;
 
         case BREATH_PHASE.EXHALE:
-          // Smooth continuous contraction (Lungs Emptying)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
             duration: durationMs,
             easing: Easing.inOut(Easing.sin),
@@ -144,7 +141,6 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
           break;
 
         case BREATH_PHASE.HOLD_OUT:
-          // Rhythmic calm resting pulse
           const halfRestMs = durationMs / 2;
           scale.value = withSequence(
             withTiming(BREATHING_CONSTANTS.ORB_REST_SCALE, {
@@ -301,13 +297,18 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 
       {/* Phase Label & Countdown Display */}
       <View style={styles.infoContainer}>
-        {/* Key set strictly to phase so title fades ONCE per phase, eliminating 1-second text shaking */}
-        <Animated.View key={phase} entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
+        {/* Text label crossfade requested in initial prompt (fades ONCE per phase) */}
+        <Animated.View
+          key={phase}
+          entering={FadeIn.duration(400)}
+          exiting={FadeOut.duration(300)}
+        >
           <Text style={[styles.phaseTitle, { color: currentColor }]}>
             {PHASE_LABELS[phase]}
           </Text>
         </Animated.View>
 
+        {/* Clean, static countdown timer text without per-second shaking or fading */}
         <Text style={styles.timerDisplay}>
           {isActive ? `${secondsRemaining}s` : 'Ready'}
         </Text>
