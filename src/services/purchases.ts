@@ -1,21 +1,34 @@
 import { Platform } from 'react-native';
-import { SubscriptionOffering } from '../types/paywall';
+import { SubscriptionOffering, PAYWALL_PLAN, PACKAGE_ID } from '@/types';
 
 export const PRO_ENTITLEMENT_ID = 'pro_access';
 
-let Purchases: any = null;
-if (Platform.OS === 'ios' || Platform.OS === 'android') {
-  try {
-    Purchases = require('react-native-purchases').default || require('react-native-purchases');
-  } catch {
-    console.warn('[PurchaseService] Native Purchases module unavailable');
-  }
-}
+const PLATFORM_OS = {
+  IOS: 'ios',
+  ANDROID: 'android',
+} as const;
+
+const FALLBACK_PRICES = {
+  MONTHLY: '$1.99',
+  LIFETIME: '$9.99',
+} as const;
 
 const REVENUECAT_KEYS = {
   apple: 'appl_demo_key_pause_sip_shipathon',
   google: 'goog_demo_key_pause_sip_shipathon',
-};
+} as const;
+
+let Purchases: any = null;
+const isSupportedNativePlatform = Platform.OS === PLATFORM_OS.IOS || Platform.OS === PLATFORM_OS.ANDROID;
+
+if (isSupportedNativePlatform) {
+  try {
+    const nativeModule = require('react-native-purchases');
+    Purchases = nativeModule.default || nativeModule;
+  } catch {
+    console.warn('[PurchaseService] Native Purchases module unavailable');
+  }
+}
 
 export class PurchaseService {
   private static isInitialized: boolean = false;
@@ -35,9 +48,13 @@ export class PurchaseService {
   static async initPurchases(): Promise<void> {
     if (PurchaseService.isInitialized) return;
 
+    const hasNativeSupport = isSupportedNativePlatform && Purchases !== null;
+
     try {
-      if ((Platform.OS === 'ios' || Platform.OS === 'android') && Purchases) {
-        const apiKey = Platform.OS === 'ios' ? REVENUECAT_KEYS.apple : REVENUECAT_KEYS.google;
+      if (hasNativeSupport) {
+        const isAppleDevice = Platform.OS === PLATFORM_OS.IOS;
+        const apiKey = isAppleDevice ? REVENUECAT_KEYS.apple : REVENUECAT_KEYS.google;
+        
         if (Purchases.LOG_LEVEL) {
           await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
         }
@@ -57,14 +74,18 @@ export class PurchaseService {
       return true;
     }
 
-    if (!PurchaseService.isInitialized || !Purchases) {
+    const isReadyForNativeCheck = PurchaseService.isInitialized && Purchases !== null;
+
+    if (!isReadyForNativeCheck) {
       return PurchaseService.devBypassEnabled;
     }
 
     try {
       const customerInfo = await Purchases.getCustomerInfo();
-      const entitlement = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID];
-      return entitlement !== undefined && entitlement.isActive;
+      const activeEntitlements = customerInfo.entitlements.active;
+      const proEntitlement = activeEntitlements[PRO_ENTITLEMENT_ID];
+      const isEntitlementActive = proEntitlement !== undefined && proEntitlement.isActive;
+      return isEntitlementActive;
     } catch (error) {
       console.warn('[PurchaseService] Error fetching customer info:', error);
       return PurchaseService.devBypassEnabled;
@@ -75,33 +96,38 @@ export class PurchaseService {
   static async fetchProOfferings(): Promise<SubscriptionOffering[]> {
     const fallbackOfferings: SubscriptionOffering[] = [
       {
-        id: 'monthly_pro',
-        identifier: '$rc_monthly',
+        id: PACKAGE_ID.MONTHLY_PRO,
+        identifier: PACKAGE_ID.RC_MONTHLY,
         title: 'Monthly Pro',
         description: 'Full desk companion access billed monthly.',
-        priceString: '$1.99',
-        period: 'monthly',
+        priceString: FALLBACK_PRICES.MONTHLY,
+        period: PAYWALL_PLAN.MONTHLY,
         isBestValue: false,
       },
       {
-        id: 'lifetime_pro',
-        identifier: '$rc_lifetime',
+        id: PACKAGE_ID.LIFETIME_PRO,
+        identifier: PACKAGE_ID.RC_LIFETIME,
         title: 'Lifetime Access',
         description: 'One-time payment for perpetual Pro access.',
-        priceString: '$9.99',
-        period: 'lifetime',
+        priceString: FALLBACK_PRICES.LIFETIME,
+        period: PAYWALL_PLAN.LIFETIME,
         isBestValue: true,
       },
     ];
 
-    if (!PurchaseService.isInitialized || !Purchases) {
+    const canFetchOfferings = PurchaseService.isInitialized && Purchases !== null;
+
+    if (!canFetchOfferings) {
       return fallbackOfferings;
     }
 
     try {
       const offerings = await Purchases.getOfferings();
-      if (offerings.current !== null && offerings.current.availablePackages.length > 0) {
-        return PurchaseService.formatPackages(offerings.current);
+      const currentOffering = offerings.current;
+      const hasAvailablePackages = currentOffering !== null && currentOffering.availablePackages.length > 0;
+
+      if (hasAvailablePackages) {
+        return PurchaseService.formatPackages(currentOffering);
       }
       return fallbackOfferings;
     } catch (error) {
@@ -116,7 +142,9 @@ export class PurchaseService {
       return true;
     }
 
-    if (!PurchaseService.isInitialized || !Purchases) {
+    const canExecutePurchase = PurchaseService.isInitialized && Purchases !== null;
+
+    if (!canExecutePurchase) {
       PurchaseService.devBypassEnabled = true;
       return true;
     }
@@ -130,7 +158,8 @@ export class PurchaseService {
         return true;
       }
 
-      const targetPkg = currentOffering.availablePackages.find(
+      const availablePackages = currentOffering.availablePackages;
+      const targetPkg = availablePackages.find(
         (pkg: any) => pkg.identifier === packageId || pkg.product.identifier === packageId
       );
 
@@ -140,8 +169,8 @@ export class PurchaseService {
       }
 
       const { customerInfo } = await Purchases.purchasePackage(targetPkg);
-      const isPro = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
-      return isPro;
+      const isProActive = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
+      return isProActive;
     } catch (error: unknown) {
       console.warn('[PurchaseService] Purchase canceled or failed:', error);
       return false;
@@ -150,18 +179,22 @@ export class PurchaseService {
 
   /** Restore previous purchases */
   static async restorePurchases(): Promise<boolean> {
-    if (!PurchaseService.isInitialized || !Purchases) {
+    const canRestore = PurchaseService.isInitialized && Purchases !== null;
+
+    if (!canRestore) {
       PurchaseService.devBypassEnabled = true;
       return true;
     }
 
     try {
       const customerInfo = await Purchases.restorePurchases();
-      const isPro = customerInfo.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
-      if (isPro) {
+      const activeEntitlements = customerInfo.entitlements.active;
+      const isProActive = activeEntitlements[PRO_ENTITLEMENT_ID] !== undefined;
+
+      if (isProActive) {
         PurchaseService.devBypassEnabled = true;
       }
-      return isPro || PurchaseService.devBypassEnabled;
+      return isProActive || PurchaseService.devBypassEnabled;
     } catch (error) {
       console.warn('[PurchaseService] Error restoring purchases:', error);
       return false;
@@ -171,15 +204,19 @@ export class PurchaseService {
   /** Helper to format RevenueCat packages */
   private static formatPackages(offering: any): SubscriptionOffering[] {
     return offering.availablePackages.map((pkg: any) => {
-      const isLifetime = pkg.packageType === 'LIFETIME' || pkg.identifier.includes('lifetime');
+      const isLifetimeType = pkg.packageType === 'LIFETIME' || pkg.identifier.includes(PAYWALL_PLAN.LIFETIME);
+      const planPeriod = isLifetimeType ? PAYWALL_PLAN.LIFETIME : PAYWALL_PLAN.MONTHLY;
+      const defaultTitle = isLifetimeType ? 'Lifetime Access' : 'Monthly Pro';
+      const defaultPrice = isLifetimeType ? FALLBACK_PRICES.LIFETIME : FALLBACK_PRICES.MONTHLY;
+
       return {
         id: pkg.identifier,
         identifier: pkg.product.identifier,
-        title: pkg.product.title || (isLifetime ? 'Lifetime Access' : 'Monthly Pro'),
+        title: pkg.product.title || defaultTitle,
         description: pkg.product.description || 'Full desk companion access.',
-        priceString: pkg.product.priceString || (isLifetime ? '$9.99' : '$1.99'),
-        period: isLifetime ? 'lifetime' : 'monthly',
-        isBestValue: isLifetime,
+        priceString: pkg.product.priceString || defaultPrice,
+        period: planPeriod,
+        isBestValue: isLifetimeType,
       };
     });
   }

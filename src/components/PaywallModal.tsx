@@ -17,10 +17,14 @@ import {
   Zap,
 } from 'lucide-react-native';
 
-import { COLORS, SPACING, RADIUS, HARDWARE } from '../theme';
-import { HapticService } from '../services/haptics';
-import { PurchaseService } from '../services/purchases';
-import { SubscriptionOffering } from '../types/paywall';
+import { PAYWALL_PLAN, PACKAGE_ID, PaywallPlan } from '@/types';
+import { COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
+import { HapticService } from '@/services/haptics';
+import { PurchaseService } from '@/services/purchases';
+
+const TIMINGS = {
+  AUTO_CLOSE_DELAY_MS: 1000,
+} as const;
 
 interface PaywallModalProps {
   visible: boolean;
@@ -33,11 +37,11 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   onClose,
   onSuccess,
 }) => {
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
+  const [selectedPlan, setSelectedPlan] = useState<PaywallPlan>(PAYWALL_PLAN.LIFETIME);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleSelectPlan = async (plan: 'monthly' | 'lifetime'): Promise<void> => {
+  const handleSelectPlan = async (plan: PaywallPlan): Promise<void> => {
     await HapticService.selection();
     setSelectedPlan(plan);
   };
@@ -47,18 +51,19 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
     setIsLoading(true);
     setStatusMessage(null);
 
-    const packageId = selectedPlan === 'lifetime' ? 'lifetime_pro' : 'monthly_pro';
-    const success = await PurchaseService.purchaseProPackage(packageId);
+    const isLifetimeSelected = selectedPlan === PAYWALL_PLAN.LIFETIME;
+    const packageId = isLifetimeSelected ? PACKAGE_ID.LIFETIME_PRO : PACKAGE_ID.MONTHLY_PRO;
+    const isPurchaseSuccessful = await PurchaseService.purchaseProPackage(packageId);
 
     setIsLoading(false);
-    if (success) {
+    if (isPurchaseSuccessful) {
       await HapticService.success();
       setStatusMessage('Welcome to Pause & Sip Pro!');
       onSuccess();
       setTimeout(() => {
         onClose();
         setStatusMessage(null);
-      }, 1000);
+      }, TIMINGS.AUTO_CLOSE_DELAY_MS);
     } else {
       await HapticService.warning();
       setStatusMessage('Purchase canceled or unavailable in dev mode.');
@@ -68,17 +73,17 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
   const handleRestore = async (): Promise<void> => {
     await HapticService.lightTouch();
     setIsLoading(true);
-    const restored = await PurchaseService.restorePurchases();
+    const isRestored = await PurchaseService.restorePurchases();
     setIsLoading(false);
 
-    if (restored) {
+    if (isRestored) {
       await HapticService.success();
       setStatusMessage('Purchases restored successfully!');
       onSuccess();
       setTimeout(() => {
         onClose();
         setStatusMessage(null);
-      }, 1000);
+      }, TIMINGS.AUTO_CLOSE_DELAY_MS);
     } else {
       await HapticService.warning();
       setStatusMessage('No previous purchases found.');
@@ -87,15 +92,23 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
   const handleToggleDevBypass = async (): Promise<void> => {
     await HapticService.heavyTouch();
-    const current = PurchaseService.getDevSandboxBypass();
-    PurchaseService.setDevSandboxBypass(!current);
-    setStatusMessage(!current ? 'Dev Sandbox Bypass: Pro Unlocked' : 'Dev Sandbox Bypass: Disabled');
-    if (!current) {
+    const currentBypassState = PurchaseService.getDevSandboxBypass();
+    const nextBypassState = !currentBypassState;
+    PurchaseService.setDevSandboxBypass(nextBypassState);
+
+    const feedbackText = nextBypassState
+      ? 'Dev Sandbox Bypass: Pro Unlocked'
+      : 'Dev Sandbox Bypass: Disabled';
+    setStatusMessage(feedbackText);
+
+    if (nextBypassState) {
       onSuccess();
     }
   };
 
   const isBypassActive = PurchaseService.getDevSandboxBypass();
+  const isLifetimeSelected = selectedPlan === PAYWALL_PLAN.LIFETIME;
+  const isMonthlySelected = selectedPlan === PAYWALL_PLAN.MONTHLY;
 
   return (
     <Modal
@@ -176,9 +189,9 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.planCard,
-                  selectedPlan === 'lifetime' && styles.planCardActive,
+                  isLifetimeSelected && styles.planCardActive,
                 ]}
-                onPress={() => handleSelectPlan('lifetime')}
+                onPress={() => handleSelectPlan(PAYWALL_PLAN.LIFETIME)}
                 activeOpacity={0.85}
               >
                 <View style={styles.bestValueBadge}>
@@ -189,7 +202,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
                   <View style={styles.planRadioRow}>
                     <CheckCircle2
                       size={20}
-                      color={selectedPlan === 'lifetime' ? COLORS.gold : COLORS.muted}
+                      color={isLifetimeSelected ? COLORS.gold : COLORS.muted}
                     />
                     <View>
                       <Text style={styles.planTitle}>Lifetime Access</Text>
@@ -204,16 +217,16 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               <TouchableOpacity
                 style={[
                   styles.planCard,
-                  selectedPlan === 'monthly' && styles.planCardActive,
+                  isMonthlySelected && styles.planCardActive,
                 ]}
-                onPress={() => handleSelectPlan('monthly')}
+                onPress={() => handleSelectPlan(PAYWALL_PLAN.MONTHLY)}
                 activeOpacity={0.85}
               >
                 <View style={styles.planCardContent}>
                   <View style={styles.planRadioRow}>
                     <CheckCircle2
                       size={20}
-                      color={selectedPlan === 'monthly' ? COLORS.water : COLORS.muted}
+                      color={isMonthlySelected ? COLORS.water : COLORS.muted}
                     />
                     <View>
                       <Text style={styles.planTitle}>Monthly Plan</Text>
@@ -235,7 +248,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
 
             {/* Main Action CTA */}
             <TouchableOpacity
-              style={[styles.ctaButton, isLoading && { opacity: 0.7 }]}
+              style={[styles.ctaButton, isLoading && styles.loadingState]}
               onPress={handlePurchaseCTA}
               disabled={isLoading}
               activeOpacity={0.85}
@@ -244,7 +257,7 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
               <Text style={styles.ctaButtonText}>
                 {isLoading
                   ? 'Processing...'
-                  : selectedPlan === 'monthly'
+                  : isMonthlySelected
                   ? 'Start 7-Day Free Trial'
                   : 'Unlock Lifetime Access'}
               </Text>
@@ -466,6 +479,9 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     marginTop: SPACING.xs,
+  },
+  loadingState: {
+    opacity: 0.7,
   },
   ctaButtonText: {
     fontSize: 16,

@@ -24,22 +24,28 @@ import {
   Crown,
 } from 'lucide-react-native';
 
-import { THEME, COLORS, SPACING, RADIUS, HARDWARE } from './src/theme';
-import { BreathingVisualizer } from './src/components/BreathingVisualizer';
-import { PaywallModal } from './src/components/PaywallModal';
-import { StorageService } from './src/services/storage';
-import { HapticService } from './src/services/haptics';
-import { PurchaseService } from './src/services/purchases';
-import { NotificationService } from './src/services/notifications';
-import { UserProfileSettings, UserStreak } from './src/types/user';
-import { WaterLog } from './src/types';
+import { THEME, COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
+import { BreathingVisualizer } from '@/components/BreathingVisualizer';
+import { PaywallModal } from '@/components/PaywallModal';
+import { StorageService } from '@/services/storage';
+import { HapticService } from '@/services/haptics';
+import { PurchaseService } from '@/services/purchases';
+import { NotificationService } from '@/services/notifications';
+import { UserProfileSettings, UserStreak } from '@/types/user';
+import {
+  WaterLog,
+  APP_TAB,
+  AppTab,
+  HYDRATION_CONSTANTS,
+  NOTIFICATION_CONSTANTS,
+} from '@/types';
 
 function MainScreen(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<UserProfileSettings | null>(null);
   const [streak, setStreak] = useState<UserStreak | null>(null);
   const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'breath' | 'water'>('breath');
+  const [activeTab, setActiveTab] = useState<AppTab>(APP_TAB.BREATH);
 
   // Paywall & Pro Entitlement State
   const [paywallVisible, setPaywallVisible] = useState<boolean>(false);
@@ -79,10 +85,15 @@ function MainScreen(): React.ReactElement {
   }, []);
 
   const totalWaterTodayMl = waterLogs.reduce((acc, log) => acc + log.amountMl, 0);
-  const targetWaterMl = settings?.dailyWaterTargetMl || 2500;
-  const progressPercent = Math.min(100, Math.round((totalWaterTodayMl / targetWaterMl) * 100));
+  const targetWaterMl = settings?.dailyWaterTargetMl || HYDRATION_CONSTANTS.DEFAULT_DAILY_TARGET_ML;
 
-  const handleTabSwitch = async (tab: 'breath' | 'water'): Promise<void> => {
+  const rawProgress = (totalWaterTodayMl / targetWaterMl) * HYDRATION_CONSTANTS.PERCENT_MULTIPLIER;
+  const progressPercent = Math.min(
+    HYDRATION_CONSTANTS.PERCENT_MAX,
+    Math.round(rawProgress)
+  );
+
+  const handleTabSwitch = async (tab: AppTab): Promise<void> => {
     await HapticService.lightTouch();
     setActiveTab(tab);
   };
@@ -99,7 +110,10 @@ function MainScreen(): React.ReactElement {
     setWaterLogs(updated);
     await StorageService.saveWaterLogs(updated);
 
-    if (totalWaterTodayMl + amountMl >= targetWaterMl && totalWaterTodayMl < targetWaterMl) {
+    const projectedTotalMl = totalWaterTodayMl + amountMl;
+    const isGoalNewlyAchieved = projectedTotalMl >= targetWaterMl && totalWaterTodayMl < targetWaterMl;
+
+    if (isGoalNewlyAchieved) {
       await HapticService.success();
     }
   };
@@ -114,8 +128,9 @@ function MainScreen(): React.ReactElement {
     await HapticService.mediumTouch();
     const nextState = !remindersActive;
     setRemindersActive(nextState);
+
     if (nextState) {
-      await NotificationService.scheduleDeskReminder(45);
+      await NotificationService.scheduleDeskReminder(NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES);
     } else {
       await NotificationService.disableDeskReminders();
     }
@@ -130,6 +145,11 @@ function MainScreen(): React.ReactElement {
     const status = await PurchaseService.checkProEntitlement();
     setIsPro(status);
   };
+
+  const isBreathTabActive = activeTab === APP_TAB.BREATH;
+  const isWaterTabActive = activeTab === APP_TAB.WATER;
+  const isGoalCompleted = progressPercent >= HYDRATION_CONSTANTS.PERCENT_MAX;
+  const streakDaysCount = streak ? streak.currentStreakDays : 1;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -163,9 +183,7 @@ function MainScreen(): React.ReactElement {
           {/* Streak Badge */}
           <View style={styles.streakBadge}>
             <Flame size={16} color={COLORS.hold} />
-            <Text style={styles.streakText}>
-              {streak ? `${streak.currentStreakDays} Days` : '1 Day'}
-            </Text>
+            <Text style={styles.streakText}>{`${streakDaysCount} Days`}</Text>
           </View>
         </View>
       </View>
@@ -175,19 +193,19 @@ function MainScreen(): React.ReactElement {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'breath' && styles.activeBreathTab,
+            isBreathTabActive && styles.activeBreathTab,
           ]}
-          onPress={() => handleTabSwitch('breath')}
+          onPress={() => handleTabSwitch(APP_TAB.BREATH)}
           activeOpacity={0.8}
         >
           <Wind
             size={18}
-            color={activeTab === 'breath' ? COLORS.inhale : COLORS.body}
+            color={isBreathTabActive ? COLORS.inhale : COLORS.body}
           />
           <Text
             style={[
               styles.tabText,
-              activeTab === 'breath' && { color: COLORS.inhale },
+              isBreathTabActive && { color: COLORS.inhale },
             ]}
           >
             Breathing Visualizer
@@ -197,22 +215,22 @@ function MainScreen(): React.ReactElement {
         <TouchableOpacity
           style={[
             styles.tabButton,
-            activeTab === 'water' && styles.activeWaterTab,
+            isWaterTabActive && styles.activeWaterTab,
           ]}
-          onPress={() => handleTabSwitch('water')}
+          onPress={() => handleTabSwitch(APP_TAB.WATER)}
           activeOpacity={0.8}
         >
           <Droplets
             size={18}
-            color={activeTab === 'water' ? COLORS.water : COLORS.body}
+            color={isWaterTabActive ? COLORS.water : COLORS.body}
           />
           <Text
             style={[
               styles.tabText,
-              activeTab === 'water' && { color: COLORS.water },
+              isWaterTabActive && { color: COLORS.water },
             ]}
           >
-            Hydration ({progressPercent}%)
+            {`Hydration (${progressPercent}%)`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -222,7 +240,7 @@ function MainScreen(): React.ReactElement {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'breath' ? (
+        {isBreathTabActive ? (
           /* Breathing Visualizer View */
           <View style={styles.card}>
             <BreathingVisualizer
@@ -241,8 +259,8 @@ function MainScreen(): React.ReactElement {
             </View>
 
             <View style={styles.progressRow}>
-              <Text style={styles.metricText}>{totalWaterTodayMl} ml</Text>
-              <Text style={styles.targetText}>/ {targetWaterMl} ml</Text>
+              <Text style={styles.metricText}>{`${totalWaterTodayMl} ml`}</Text>
+              <Text style={styles.targetText}>{`/ ${targetWaterMl} ml`}</Text>
             </View>
 
             {/* Progress Bar Container */}
@@ -255,7 +273,7 @@ function MainScreen(): React.ReactElement {
               />
             </View>
 
-            {progressPercent >= 100 && (
+            {isGoalCompleted && (
               <View style={styles.completedBanner}>
                 <CheckCircle2 size={18} color={COLORS.inhale} />
                 <Text style={styles.completedText}>Daily Hydration Goal Met!</Text>
@@ -267,20 +285,30 @@ function MainScreen(): React.ReactElement {
             <View style={styles.presetsRow}>
               <TouchableOpacity
                 style={styles.presetButton}
-                onPress={() => handleAddWater(250, 'Glass (250ml)')}
+                onPress={() =>
+                  handleAddWater(
+                    HYDRATION_CONSTANTS.PRESET_GLASS_ML,
+                    `Glass (${HYDRATION_CONSTANTS.PRESET_GLASS_ML}ml)`
+                  )
+                }
                 activeOpacity={0.8}
               >
                 <Plus size={16} color={COLORS.water} />
-                <Text style={styles.presetText}>+250 ml</Text>
+                <Text style={styles.presetText}>{`+${HYDRATION_CONSTANTS.PRESET_GLASS_ML} ml`}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.presetButton}
-                onPress={() => handleAddWater(500, 'Bottle (500ml)')}
+                onPress={() =>
+                  handleAddWater(
+                    HYDRATION_CONSTANTS.PRESET_BOTTLE_ML,
+                    `Bottle (${HYDRATION_CONSTANTS.PRESET_BOTTLE_ML}ml)`
+                  )
+                }
                 activeOpacity={0.8}
               >
                 <Plus size={16} color={COLORS.water} />
-                <Text style={styles.presetText}>+500 ml</Text>
+                <Text style={styles.presetText}>{`+${HYDRATION_CONSTANTS.PRESET_BOTTLE_ML} ml`}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -307,7 +335,9 @@ function MainScreen(): React.ReactElement {
             <View>
               <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
               <Text style={styles.reminderSubtitle}>
-                {remindersActive ? 'Active: Gentle micro-pause every 45 min' : 'Paused: Tap to enable'}
+                {remindersActive
+                  ? `Active: Gentle micro-pause every ${NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES} min`
+                  : 'Paused: Tap to enable'}
               </Text>
             </View>
           </View>

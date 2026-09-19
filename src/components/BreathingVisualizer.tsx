@@ -13,20 +13,29 @@ import Animated, {
   withRepeat,
   withSequence,
   Easing,
-  runOnJS,
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Play, Pause, RefreshCw, Wind } from 'lucide-react-native';
 
-import { BreathPhase } from '../types';
-import { COLORS, SPACING, RADIUS, HARDWARE } from '../theme';
+import { BreathPhase, BREATH_PHASE, BREATHING_CONSTANTS } from '@/types';
+import { COLORS, SPACING, RADIUS, HARDWARE } from '@/theme';
+import { HapticService } from '@/services/haptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CONTAINER_SIZE = Math.min(SCREEN_WIDTH - 64, 300);
-const INNER_ORB_SIZE = 140;
+
+const LAYOUT_DIMENSIONS = {
+  SCREEN_PADDING: 64,
+  MAX_CONTAINER_SIZE: 300,
+  INNER_ORB_SIZE: 140,
+  MS_PER_SECOND: 1000,
+} as const;
+
+const CONTAINER_SIZE = Math.min(
+  SCREEN_WIDTH - LAYOUT_DIMENSIONS.SCREEN_PADDING,
+  LAYOUT_DIMENSIONS.MAX_CONTAINER_SIZE
+);
 
 interface BreathingVisualizerProps {
   inhaleSec?: number;
@@ -37,83 +46,102 @@ interface BreathingVisualizerProps {
 }
 
 const PHASE_COLORS: Record<BreathPhase, string> = {
-  inhale: COLORS.inhale,  // #10B981 Soft Emerald
-  holdIn: COLORS.hold,    // #F59E0B Soft Amber
-  exhale: COLORS.exhale,  // #818CF8 Gentle Periwinkle
-  holdOut: '#64748B',     // Deep Slate Neutral
+  [BREATH_PHASE.INHALE]: COLORS.inhale,    // #10B981 Soft Emerald
+  [BREATH_PHASE.HOLD_IN]: COLORS.hold,     // #F59E0B Soft Amber
+  [BREATH_PHASE.EXHALE]: COLORS.exhale,    // #818CF8 Gentle Periwinkle
+  [BREATH_PHASE.HOLD_OUT]: '#64748B',      // Deep Slate Neutral
 };
 
 const PHASE_LABELS: Record<BreathPhase, string> = {
-  inhale: 'Inhale Deeply',
-  holdIn: 'Hold Breath',
-  exhale: 'Exhale Slowly',
-  holdOut: 'Rest & Pause',
+  [BREATH_PHASE.INHALE]: 'Inhale Deeply',
+  [BREATH_PHASE.HOLD_IN]: 'Hold Breath',
+  [BREATH_PHASE.EXHALE]: 'Exhale Slowly',
+  [BREATH_PHASE.HOLD_OUT]: 'Rest & Pause',
 };
 
 export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
-  inhaleSec = 4,
-  holdInSec = 4,
-  exhaleSec = 4,
-  holdOutSec = 4,
+  inhaleSec = BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC,
+  holdInSec = BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC,
+  exhaleSec = BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC,
+  holdOutSec = BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC,
   onCycleComplete,
 }) => {
   const [isActive, setIsActive] = useState<boolean>(false);
-  const [phase, setPhase] = useState<BreathPhase>('inhale');
+  const [phase, setPhase] = useState<BreathPhase>(BREATH_PHASE.INHALE);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(inhaleSec);
   const [completedCycles, setCompletedCycles] = useState<number>(0);
 
   // Reanimated 3 Shared Values
-  const scale = useSharedValue<number>(0.45);
-  const ringOpacity = useSharedValue<number>(0.3);
+  const scale = useSharedValue<number>(BREATHING_CONSTANTS.ORB_MIN_SCALE);
+  const ringOpacity = useSharedValue<number>(BREATHING_CONSTANTS.OPACITY_LOW);
   const auraRotation = useSharedValue<number>(0);
 
-  const phaseRef = useRef<BreathPhase>('inhale');
+  const phaseRef = useRef<BreathPhase>(BREATH_PHASE.INHALE);
   phaseRef.current = phase;
 
-  const triggerHapticFeedback = useCallback(() => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // Graceful fallback on non-supported hardware
-    }
+  const triggerHapticFeedback = useCallback(async () => {
+    await HapticService.breathInhalePulse();
   }, []);
 
-  const handlePhaseTransition = useCallback((nextPhase: BreathPhase) => {
-    triggerHapticFeedback();
-    setPhase(nextPhase);
+  const handlePhaseTransition = useCallback(
+    (nextPhase: BreathPhase) => {
+      triggerHapticFeedback();
+      setPhase(nextPhase);
 
-    let durationMs = 4000;
-    if (nextPhase === 'inhale') durationMs = inhaleSec * 1000;
-    if (nextPhase === 'holdIn') durationMs = holdInSec * 1000;
-    if (nextPhase === 'exhale') durationMs = exhaleSec * 1000;
-    if (nextPhase === 'holdOut') durationMs = holdOutSec * 1000;
+      let durationSeconds: number = BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC;
+      switch (nextPhase) {
+        case BREATH_PHASE.INHALE:
+          durationSeconds = inhaleSec;
+          break;
+        case BREATH_PHASE.HOLD_IN:
+          durationSeconds = holdInSec;
+          break;
+        case BREATH_PHASE.EXHALE:
+          durationSeconds = exhaleSec;
+          break;
+        case BREATH_PHASE.HOLD_OUT:
+          durationSeconds = holdOutSec;
+          break;
+      }
 
-    setSecondsRemaining(Math.round(durationMs / 1000));
+      const durationMs = durationSeconds * LAYOUT_DIMENSIONS.MS_PER_SECOND;
+      setSecondsRemaining(durationSeconds);
 
-    // Animate scale & opacity on UI thread
-    if (nextPhase === 'inhale') {
-      scale.value = withTiming(1.0, {
-        duration: durationMs,
-        easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
-      });
-      ringOpacity.value = withTiming(0.85, { duration: durationMs });
-    } else if (nextPhase === 'holdIn') {
-      scale.value = withSequence(
-        withTiming(1.03, { duration: durationMs / 2 }),
-        withTiming(1.0, { duration: durationMs / 2 })
-      );
-      ringOpacity.value = withTiming(0.95, { duration: durationMs });
-    } else if (nextPhase === 'exhale') {
-      scale.value = withTiming(0.45, {
-        duration: durationMs,
-        easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
-      });
-      ringOpacity.value = withTiming(0.25, { duration: durationMs });
-    } else if (nextPhase === 'holdOut') {
-      scale.value = withTiming(0.42, { duration: durationMs });
-      ringOpacity.value = withTiming(0.15, { duration: durationMs });
-    }
-  }, [inhaleSec, holdInSec, exhaleSec, holdOutSec, scale, ringOpacity, triggerHapticFeedback]);
+      // Animate scale & opacity on UI thread with switch case
+      switch (nextPhase) {
+        case BREATH_PHASE.INHALE:
+          scale.value = withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
+            duration: durationMs,
+            easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
+          });
+          ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MID, { duration: durationMs });
+          break;
+
+        case BREATH_PHASE.HOLD_IN:
+          const halfDurationMs = durationMs / 2;
+          scale.value = withSequence(
+            withTiming(BREATHING_CONSTANTS.ORB_PULSE_SCALE, { duration: halfDurationMs }),
+            withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, { duration: halfDurationMs })
+          );
+          ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_FULL, { duration: durationMs });
+          break;
+
+        case BREATH_PHASE.EXHALE:
+          scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
+            duration: durationMs,
+            easing: Easing.bezier(0.4, 0.0, 0.2, 1.0),
+          });
+          ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_LOW, { duration: durationMs });
+          break;
+
+        case BREATH_PHASE.HOLD_OUT:
+          scale.value = withTiming(BREATHING_CONSTANTS.ORB_REST_SCALE, { duration: durationMs });
+          ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MIN, { duration: durationMs });
+          break;
+      }
+    },
+    [inhaleSec, holdInSec, exhaleSec, holdOutSec, scale, ringOpacity, triggerHapticFeedback]
+  );
 
   // Main Cycle Timer Loop
   useEffect(() => {
@@ -121,62 +149,76 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 
     const timer = setInterval(() => {
       setSecondsRemaining((prev) => {
-        if (prev > 1) {
+        const isTimerFinished = prev <= 1;
+
+        if (!isTimerFinished) {
           return prev - 1;
         }
 
-        // Advance to next phase boundary
+        // Advance to next phase boundary using switch case
         const current = phaseRef.current;
-        if (current === 'inhale') {
-          handlePhaseTransition('holdIn');
-        } else if (current === 'holdIn') {
-          handlePhaseTransition('exhale');
-        } else if (current === 'exhale') {
-          handlePhaseTransition('holdOut');
-        } else {
-          // Cycle completed!
-          setCompletedCycles((c) => c + 1);
-          if (onCycleComplete) {
-            onCycleComplete();
-          }
-          handlePhaseTransition('inhale');
+        switch (current) {
+          case BREATH_PHASE.INHALE:
+            handlePhaseTransition(BREATH_PHASE.HOLD_IN);
+            break;
+
+          case BREATH_PHASE.HOLD_IN:
+            handlePhaseTransition(BREATH_PHASE.EXHALE);
+            break;
+
+          case BREATH_PHASE.EXHALE:
+            handlePhaseTransition(BREATH_PHASE.HOLD_OUT);
+            break;
+
+          case BREATH_PHASE.HOLD_OUT:
+            setCompletedCycles((c) => c + 1);
+            if (onCycleComplete) {
+              onCycleComplete();
+            }
+            handlePhaseTransition(BREATH_PHASE.INHALE);
+            break;
         }
-        return 4;
+        return BREATHING_CONSTANTS.DEFAULT_PHASE_DURATION_SEC;
       });
-    }, 1000);
+    }, BREATHING_CONSTANTS.TIMER_INTERVAL_MS);
 
     return () => clearInterval(timer);
   }, [isActive, handlePhaseTransition, onCycleComplete]);
 
-  // Subtle background aura rotation animation
+  // Background aura rotation animation
   useEffect(() => {
     auraRotation.value = withRepeat(
-      withTiming(360, { duration: 16000, easing: Easing.linear }),
+      withTiming(360, {
+        duration: BREATHING_CONSTANTS.AURA_ROTATION_MS,
+        easing: Easing.linear,
+      }),
       -1,
       false
     );
   }, [auraRotation]);
 
   const toggleSession = async (): Promise<void> => {
-    triggerHapticFeedback();
-    if (!isActive) {
+    await triggerHapticFeedback();
+    const willActivate = !isActive;
+
+    if (willActivate) {
       setIsActive(true);
-      handlePhaseTransition('inhale');
+      handlePhaseTransition(BREATH_PHASE.INHALE);
     } else {
       setIsActive(false);
-      scale.value = withTiming(0.45, { duration: 600 });
-      ringOpacity.value = withTiming(0.3, { duration: 600 });
+      scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, { duration: 600 });
+      ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_LOW, { duration: 600 });
     }
   };
 
   const resetSession = async (): Promise<void> => {
-    triggerHapticFeedback();
+    await triggerHapticFeedback();
     setIsActive(false);
-    setPhase('inhale');
+    setPhase(BREATH_PHASE.INHALE);
     setSecondsRemaining(inhaleSec);
     setCompletedCycles(0);
-    scale.value = withTiming(0.45, { duration: 500 });
-    ringOpacity.value = withTiming(0.3, { duration: 500 });
+    scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, { duration: 500 });
+    ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_LOW, { duration: 500 });
   };
 
   // Reanimated Animated Styles
@@ -197,12 +239,12 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
   });
 
   const currentColor = PHASE_COLORS[phase];
+  const hasCompletedCycles = completedCycles > 0;
 
   return (
     <View style={styles.container}>
-      {/* Visualizer Aura & Orb Container */}
+      {/* Visualizer Aura & Orb Stage */}
       <View style={[styles.visualizerStage, { width: CONTAINER_SIZE, height: CONTAINER_SIZE }]}>
-        {/* SVG Radial Glow Background */}
         <Animated.View style={[StyleSheet.absoluteFillObject, auraAnimatedStyle]}>
           <Svg height={CONTAINER_SIZE} width={CONTAINER_SIZE} viewBox={`0 0 ${CONTAINER_SIZE} ${CONTAINER_SIZE}`}>
             <Defs>
@@ -252,7 +294,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         </Text>
 
         <Text style={styles.cycleBadgeText}>
-          {completedCycles > 0 ? `${completedCycles} Cycles Completed` : '4-4-4-4 Box Breathing'}
+          {hasCompletedCycles ? `${completedCycles} Cycles Completed` : '4-4-4-4 Box Breathing'}
         </Text>
       </View>
 
@@ -317,8 +359,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   breathingOrb: {
-    width: INNER_ORB_SIZE,
-    height: INNER_ORB_SIZE,
+    width: LAYOUT_DIMENSIONS.INNER_ORB_SIZE,
+    height: LAYOUT_DIMENSIONS.INNER_ORB_SIZE,
     borderRadius: RADIUS.full,
     alignItems: 'center',
     justifyContent: 'center',
