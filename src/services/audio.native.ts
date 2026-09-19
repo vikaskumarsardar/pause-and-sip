@@ -2,13 +2,13 @@ import { Audio } from 'expo-av';
 import { SoundscapeType, SOUNDSCAPES } from '@/types';
 
 const NATIVE_SOUNDSCAPE_URLS: Record<string, string> = {
-  [SOUNDSCAPES.WATERFALL]: 'https://actions.google.com/sounds/v1/water/waterfall_heavy.ogg',
+  [SOUNDSCAPES.WATERFALL]: 'https://raw.githubusercontent.com/Muges/ambientsounds/HEAD/stream.ogg',
   [SOUNDSCAPES.RAIN]: 'https://actions.google.com/sounds/v1/weather/rain_heavy_loud.ogg',
-  [SOUNDSCAPES.OCEAN]: 'https://actions.google.com/sounds/v1/water/ocean_waves.ogg',
-  [SOUNDSCAPES.FIREPLACE]: 'https://actions.google.com/sounds/v1/ambiences/outdoor_fire.ogg',
-  [SOUNDSCAPES.BREEZE]: 'https://actions.google.com/sounds/v1/weather/wind_heavy.ogg',
-  [SOUNDSCAPES.COSMIC]: 'https://actions.google.com/sounds/v1/science_fiction/space_engine_loop.ogg',
-  [SOUNDSCAPES.ALPHA]: 'https://actions.google.com/sounds/v1/ambiences/meditation_bell.ogg',
+  [SOUNDSCAPES.OCEAN]: 'https://raw.githubusercontent.com/bradtraversy/ambient-sound-mixer/main/audio/ocean.mp3',
+  [SOUNDSCAPES.FIREPLACE]: 'https://actions.google.com/sounds/v1/ambiences/fire.ogg',
+  [SOUNDSCAPES.BREEZE]: 'https://actions.google.com/sounds/v1/weather/wind.ogg',
+  [SOUNDSCAPES.COSMIC]: 'https://actions.google.com/sounds/v1/science_fiction/alien_song.ogg',
+  [SOUNDSCAPES.ALPHA]: 'https://actions.google.com/sounds/v1/household/bowl.ogg',
 };
 
 const NATIVE_AUDIO_CONSTANTS = {
