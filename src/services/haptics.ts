@@ -77,11 +77,31 @@ export class HapticService {
 
   /** Breathing Exhale guide haptic */
   static async breathExhalePulse(): Promise<void> {
-    if (!isHapticsSupported) return;
-    try {
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-    } catch {
-      // Graceful fallback
+    if (isHapticsSupported) {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
+        return;
+      } catch {
+        // Fallback
+      }
+    }
+    if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+      window.navigator.vibrate(25);
+    }
+  }
+
+  /** Subtle tick feedback on every countdown second */
+  static async countdownTick(): Promise<void> {
+    if (isHapticsSupported) {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        return;
+      } catch {
+        // Fallback
+      }
+    }
+    if (typeof window !== 'undefined' && window.navigator && typeof window.navigator.vibrate === 'function') {
+      window.navigator.vibrate(15);
     }
   }
 }

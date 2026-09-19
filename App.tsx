@@ -154,6 +154,7 @@ function MainScreen(): React.ReactElement {
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <View style={styles.mainWrapper}>
 
       {/* Header Bar */}
       <View style={styles.header}>
@@ -161,9 +162,9 @@ function MainScreen(): React.ReactElement {
           <View style={styles.brandIconContainer}>
             <Droplets size={20} color={COLORS.water} />
           </View>
-          <View>
-            <Text style={styles.brandTitle}>Pause & Sip</Text>
-            <Text style={styles.brandSubtitle}>Desk Companion • Shipathon 2026</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.brandTitle} numberOfLines={1}>Pause & Sip</Text>
+            <Text style={styles.brandSubtitle} numberOfLines={1}>Desk Companion • Shipathon 2026</Text>
           </View>
         </View>
 
@@ -236,13 +237,10 @@ function MainScreen(): React.ReactElement {
       </View>
 
       {/* Main Content Area */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {isBreathTabActive ? (
-          /* Breathing Visualizer View */
-          <View style={styles.card}>
+      {isBreathTabActive ? (
+        /* Breathing Visualizer View (Non-Scrollable Zen Stage) */
+        <View style={styles.breathTabContainer}>
+          <View style={[styles.card, styles.breathCard]}>
             <BreathingVisualizer
               inhaleSec={4}
               holdInSec={4}
@@ -250,8 +248,14 @@ function MainScreen(): React.ReactElement {
               holdOutSec={4}
             />
           </View>
-        ) : (
-          /* Hydration Quick Tracker View */
+        </View>
+      ) : (
+        /* Hydration & Settings Area (Scrollable Log List) */
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hydration Quick Tracker View */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Droplets size={22} color={COLORS.water} />
@@ -320,47 +324,47 @@ function MainScreen(): React.ReactElement {
               </TouchableOpacity>
             </View>
           </View>
-        )}
 
-        {/* Desk Reminder Notification Control */}
-        <TouchableOpacity
-          style={styles.reminderBanner}
-          onPress={handleToggleReminders}
-          activeOpacity={0.85}
-        >
-          <View style={styles.reminderLeftGroup}>
-            <View style={styles.bellIconBox}>
-              <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
-            </View>
-            <View>
-              <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
-              <Text style={styles.reminderSubtitle}>
-                {remindersActive
-                  ? `Active: Gentle micro-pause every ${NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES} min`
-                  : 'Paused: Tap to enable'}
-              </Text>
-            </View>
-          </View>
-          <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
-        </TouchableOpacity>
-
-        {/* Upgrade Callout Card (if not Pro) */}
-        {!isPro && (
+          {/* Desk Reminder Notification Control */}
           <TouchableOpacity
-            style={styles.proBannerCard}
-            onPress={handleOpenPaywall}
+            style={styles.reminderBanner}
+            onPress={handleToggleReminders}
             activeOpacity={0.85}
           >
-            <View style={styles.proBannerHeader}>
-              <Sparkles size={20} color={COLORS.gold} />
-              <Text style={styles.proBannerTitle}>Unlock Pause & Sip Pro</Text>
+            <View style={styles.reminderLeftGroup}>
+              <View style={styles.bellIconBox}>
+                <Bell size={18} color={remindersActive ? COLORS.water : COLORS.muted} />
+              </View>
+              <View>
+                <Text style={styles.reminderTitle}>OneSignal Desk Break Push</Text>
+                <Text style={styles.reminderSubtitle}>
+                  {remindersActive
+                    ? `Active: Gentle micro-pause every ${NOTIFICATION_CONSTANTS.DEFAULT_INTERVAL_MINUTES} min`
+                    : 'Paused: Tap to enable'}
+                </Text>
+              </View>
             </View>
-            <Text style={styles.proBannerBody}>
-              Get 4-7-8 Deep Sleep breathing, binaural ocean soundscapes, and OLED dark themes.
-            </Text>
+            <View style={[styles.statusIndicator, remindersActive && styles.statusIndicatorActive]} />
           </TouchableOpacity>
-        )}
-      </ScrollView>
+
+          {/* Upgrade Callout Card (if not Pro) */}
+          {!isPro && (
+            <TouchableOpacity
+              style={styles.proBannerCard}
+              onPress={handleOpenPaywall}
+              activeOpacity={0.85}
+            >
+              <View style={styles.proBannerHeader}>
+                <Sparkles size={20} color={COLORS.gold} />
+                <Text style={styles.proBannerTitle}>Unlock Pause & Sip Pro</Text>
+              </View>
+              <Text style={styles.proBannerBody}>
+                Get 4-7-8 Deep Sleep breathing, binaural ocean soundscapes, and OLED dark themes.
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      )}
 
       {/* Paywall Bottom Sheet Modal */}
       <PaywallModal
@@ -368,6 +372,7 @@ function MainScreen(): React.ReactElement {
         onClose={() => setPaywallVisible(false)}
         onSuccess={handleProSuccess}
       />
+      </View>
     </View>
   );
 }
@@ -391,47 +396,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  mainWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 540,
+    alignSelf: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    gap: SPACING.xs,
   },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: SPACING.xs,
+    flex: 1,
+    minWidth: 0,
   },
   brandIconContainer: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   brandTitle: {
     ...THEME.typography.h3,
+    fontSize: 16,
   },
   brandSubtitle: {
     ...THEME.typography.caption,
+    fontSize: 10,
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
+    gap: 6,
+    flexShrink: 0,
   },
   proBadgeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -443,10 +461,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold,
   },
   proBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: COLORS.gold,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   proActiveText: {
     color: '#000000',
@@ -454,17 +472,18 @@ const styles = StyleSheet.create({
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 6,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     minHeight: HARDWARE.minTouchTarget,
+    flexShrink: 0,
   },
   streakText: {
-    ...THEME.typography.caption,
+    fontSize: 11,
     color: COLORS.title,
     fontWeight: '600',
   },
@@ -502,6 +521,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: SPACING.md,
     gap: SPACING.md,
+  },
+  breathTabContainer: {
+    flex: 1,
+    padding: SPACING.md,
+  },
+  breathCard: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
     backgroundColor: COLORS.surface,

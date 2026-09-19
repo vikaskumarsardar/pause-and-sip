@@ -168,6 +168,7 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
         const isTimerFinished = prev <= 1;
 
         if (!isTimerFinished) {
+          HapticService.countdownTick();
           return prev - 1;
         }
 
