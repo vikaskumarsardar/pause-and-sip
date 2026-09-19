@@ -107,53 +107,53 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
       const durationMs = durationSeconds * LAYOUT_DIMENSIONS.MS_PER_SECOND;
       setSecondsRemaining(durationSeconds);
 
-      // Smooth Organic Motion Curves per Phase
+      // Ultra-soothing, silk-smooth sine motion curves
       switch (nextPhase) {
         case BREATH_PHASE.INHALE:
-          // Smooth expanding curve (Lungs Filling)
+          // Smooth continuous expansion (Lungs Filling)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
             duration: durationMs,
-            easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+            easing: Easing.inOut(Easing.sin),
           });
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MID, { duration: durationMs });
           break;
 
         case BREATH_PHASE.HOLD_IN:
-          // Organic 2-beat full lungs pulse (Vitality Glow)
+          // Rhythmic calm lungs pulse
           const halfMs = durationMs / 2;
           scale.value = withSequence(
             withTiming(BREATHING_CONSTANTS.ORB_PULSE_SCALE, {
               duration: halfMs,
-              easing: Easing.inOut(Easing.ease),
+              easing: Easing.inOut(Easing.sin),
             }),
             withTiming(BREATHING_CONSTANTS.ORB_MAX_SCALE, {
               duration: halfMs,
-              easing: Easing.inOut(Easing.ease),
+              easing: Easing.inOut(Easing.sin),
             })
           );
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_FULL, { duration: durationMs });
           break;
 
         case BREATH_PHASE.EXHALE:
-          // Relaxing contracting curve (Lungs Emptying)
+          // Smooth continuous contraction (Lungs Emptying)
           scale.value = withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
             duration: durationMs,
-            easing: Easing.bezier(0.25, 0.1, 0.25, 1.0),
+            easing: Easing.inOut(Easing.sin),
           });
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_LOW, { duration: durationMs });
           break;
 
         case BREATH_PHASE.HOLD_OUT:
-          // Subtle gentle resting breath pulse (Calm Stillness)
+          // Rhythmic calm resting pulse
           const halfRestMs = durationMs / 2;
           scale.value = withSequence(
             withTiming(BREATHING_CONSTANTS.ORB_REST_SCALE, {
               duration: halfRestMs,
-              easing: Easing.inOut(Easing.ease),
+              easing: Easing.inOut(Easing.sin),
             }),
             withTiming(BREATHING_CONSTANTS.ORB_MIN_SCALE, {
               duration: halfRestMs,
-              easing: Easing.inOut(Easing.ease),
+              easing: Easing.inOut(Easing.sin),
             })
           );
           ringOpacity.value = withTiming(BREATHING_CONSTANTS.OPACITY_MIN, { duration: durationMs });
@@ -205,12 +205,12 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
     return () => clearInterval(timer);
   }, [isActive, handlePhaseTransition, onCycleComplete]);
 
-  // Subtle ambient radial aura pulse (Symmetrical, no wobble)
+  // Gentle ambient radial aura pulse
   useEffect(() => {
     auraPulse.value = withRepeat(
       withSequence(
-        withTiming(1.12, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1.0, { duration: 3000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1.08, { duration: 3500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0, { duration: 3500, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true
@@ -301,7 +301,8 @@ export const BreathingVisualizer: React.FC<BreathingVisualizerProps> = ({
 
       {/* Phase Label & Countdown Display */}
       <View style={styles.infoContainer}>
-        <Animated.View key={`${phase}-${secondsRemaining}`} entering={FadeIn.duration(250)} exiting={FadeOut.duration(200)}>
+        {/* Key set strictly to phase so title fades ONCE per phase, eliminating 1-second text shaking */}
+        <Animated.View key={phase} entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)}>
           <Text style={[styles.phaseTitle, { color: currentColor }]}>
             {PHASE_LABELS[phase]}
           </Text>
