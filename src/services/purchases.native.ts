@@ -31,6 +31,12 @@ export class PurchaseService {
       const isAppleDevice = Platform.OS === PLATFORM_OS.IOS;
       const apiKey = isAppleDevice ? REVENUECAT_KEYS.APPLE : REVENUECAT_KEYS.GOOGLE;
 
+      const hasValidKey = Boolean(apiKey && apiKey.trim().length > 0);
+      if (!hasValidKey) {
+        console.warn('[PurchaseService Native] RevenueCat API key unconfigured. Falling back to Dev Sandbox mode.');
+        return;
+      }
+
       if (Purchases.LOG_LEVEL) {
         await Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG);
       }
